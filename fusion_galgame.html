@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Galgame 交互界面</title>
 <style>
+    /* --- 字体引入 --- */
+    /* 步骤1: 在这里引入您想使用的网络字体。
+       您可以从 Google Fonts (https://fonts.google.com/) 或其他免费字体网站找到 @import 链接。
+       下面是一个示例，引入了“马善政”字体。*/
+    @import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap');
+
     /* --- 全局与基础设置 --- */
     :root {
         /* --- 日间模式 --- */
@@ -208,9 +214,11 @@
         100% { box-shadow: 0 0 5px #9b59b6, 0 0 10px #9b59b6, inset 0 0 5px #d3a7e6; }
     }
     @keyframes fire-flicker {
-        0%   { box-shadow: 0 0 10px #e74c3c, 0 0 5px #ffa500, inset 0 0 5px #ff4500; }
-        50%  { box-shadow: 0 0 25px #e74c3c, 0 0 15px #ffa500, inset 0 0 12px #ff4500; }
-        100% { box-shadow: 0 0 10px #e74c3c, 0 0 5px #ffa500, inset 0 0 5px #ff4500; }
+        0% { background-position: 0% 50%; }
+        25% { background-position: 100% 50%; }
+        50% { background-position: 50% 0%; }
+        75% { background-position: 50% 100%; }
+        100% { background-position: 0% 50%; }
     }
 
     /* --- 角色主题化 --- */
@@ -230,38 +238,61 @@
         content: '';
         position: absolute;
         top: 0; left: 0; right: 0; bottom: 0;
-        border-radius: inherit;
-        animation: fire-flicker 2.5s ease-in-out infinite;
+        background:
+            radial-gradient(circle at 20% 20%, rgba(255, 165, 0, 0.5), transparent 40%),
+            radial-gradient(circle at 80% 70%, rgba(231, 76, 60, 0.6), transparent 50%),
+            radial-gradient(circle at 50% 50%, rgba(255, 215, 0, 0.4), transparent 60%);
+        background-size: 200% 200%;
+        animation: fire-flicker 5s ease-in-out infinite;
+        filter: blur(5px);
+        opacity: 0.8;
         pointer-events: none;
         z-index: 0;
     }
 
-    /* --- 新增：随机闪电效果 --- */
+    /* --- 新增：SVG 闪电效果 --- */
     .lightning-container {
         position: absolute;
         top: 0; left: 0; right: 0; bottom: 0;
         pointer-events: none;
         overflow: hidden;
-        z-index: 3; /* 确保在最上层 */
+        z-index: 3;
     }
-    .lightning-bolt {
+    .lightning-svg {
         position: absolute;
-        background: linear-gradient(to bottom, rgba(255,255,255,0.9) 0%, rgba(211, 167, 230, 0.7) 70%, rgba(155, 89, 182, 0) 100%);
-        width: 3px;
-        border-radius: 2px;
-        box-shadow: 0 0 4px #fff, 0 0 8px #fff, 0 0 12px #9b59b6;
+        width: 150px; /* 定义SVG视口大小 */
+        height: 200px;
         opacity: 0;
-        transform-origin: center top;
+        filter: drop-shadow(0 0 3px white) drop-shadow(0 0 8px var(--emphasis-color));
     }
-    .lightning-bolt.flash {
-        animation: lightning-flash 0.4s ease-out;
+    .lightning-svg.flash {
+        animation: svg-lightning-flash 0.6s ease-out;
     }
-    @keyframes lightning-flash {
+    .lightning-svg path {
+        stroke: white;
+        stroke-width: 2;
+        stroke-linecap: round;
+        fill: none;
+        stroke-dasharray: 500; /* 一个足够大的值 */
+        stroke-dashoffset: 500; /* 初始时完全隐藏 */
+    }
+    .flash .lightning-path-main {
+        animation: draw-lightning 0.3s ease-in forwards;
+    }
+    .flash .lightning-path-branch {
+        animation: draw-lightning 0.2s 0.1s ease-in forwards; /* 延迟出现 */
+    }
+
+    @keyframes svg-lightning-flash {
         0% { opacity: 0; }
-        10% { opacity: 0.6; }
-        20% { opacity: 1; }
-        30% { opacity: 0.8; }
+        10% { opacity: 1; }
+        80% { opacity: 1; }
         100% { opacity: 0; }
+    }
+    @keyframes draw-lightning {
+        to {
+            stroke-dashoffset: 0;
+        }
     }
     
     @keyframes panel-slide-in {
@@ -336,9 +367,11 @@
     .character-name {
         font-size: 2.8rem;
         font-weight: bold;
-        /* 您可以在这里更改字体。例如 'Kaiti', 'SimSun' 等。
-           也可以使用 @font-face 规则引入外部字体文件。 */
-        font-family: "Source Han Serif SC", "Songti SC", serif;
+        /* 步骤2: 在这里使用您引入的字体名称。
+           将您选择的字体名放在最前面。如果字体名包含空格，请用引号括起来。
+           后面的 "Source Han Serif SC" 等是备用字体，如果网络字体加载失败，浏览器会依次尝试它们。
+           您也可以直接使用电脑上已安装的字体，例如 "楷体", "微软雅黑" 等。*/
+        font-family: "Ma Shan Zheng", "Source Han Serif SC", "Songti SC", serif;
         color: var(--emphasis-color);
         margin-bottom: 2rem;
         text-shadow: 1px 1px 3px rgba(0,0,0,0.1);
@@ -518,6 +551,19 @@ $1
             </div>
         </div>
     </div>
+    
+    <!-- SVG 闪电模板 -->
+    <div id="svg-templates" style="display: none;">
+        <svg id="lightning-template-1" viewBox="0 0 100 200">
+            <path class="lightning-path-main" d="M 50 0 L 55 60 L 40 75 L 50 130 L 45 200" />
+            <path class="lightning-path-branch" d="M 55 60 L 80 90" />
+        </svg>
+        <svg id="lightning-template-2" viewBox="0 0 100 200">
+            <path class="lightning-path-main" d="M 50 0 L 45 70 L 60 85 L 50 150 L 55 200" />
+            <path class="lightning-path-branch" d="M 45 70 L 20 100" />
+            <path class="lightning-path-branch" d="M 50 150 L 70 170" />
+        </svg>
+    </div>
 </div>
 
 <script>
@@ -604,27 +650,37 @@ let lightningTimeoutId = null; // 用于控制闪电效果的定时器
 
 function createLightningBolt(container) {
     if (!container) return;
-    const bolt = document.createElement('div');
-    bolt.className = 'lightning-bolt';
 
-    const x = Math.random() * 100;
-    const y = Math.random() * 100;
+    // 随机选择一个SVG模板
+    const templateId = `lightning-template-${Math.ceil(Math.random() * 2)}`;
+    const template = document.getElementById(templateId);
+    if (!template) return;
+
+    // 克隆SVG元素
+    const svgClone = template.cloneNode(true);
+    svgClone.removeAttribute('id');
+    svgClone.classList.add('lightning-svg');
+
+    // 随机定位
+    const panelRect = container.getBoundingClientRect();
+    const x = Math.random() * (panelRect.width - 150); // 减去SVG宽度
+    const y = Math.random() * (panelRect.height - 200); // 减去SVG高度
+    svgClone.style.left = `${x}px`;
+    svgClone.style.top = `${y}px`;
     
-    bolt.style.left = `${x}%`;
-    bolt.style.top = `${y}%`;
-    bolt.style.height = `${Math.random() * 100 + 50}px`; // 50px to 150px
-    bolt.style.transform = `rotate(${Math.random() * 40 - 20}deg)`;
-
-    container.appendChild(bolt);
+    container.appendChild(svgClone);
     
-    bolt.classList.add('flash');
+    // 触发动画
+    requestAnimationFrame(() => {
+        svgClone.classList.add('flash');
+    });
 
-    // Remove the bolt after the animation completes
+    // 动画结束后移除
     setTimeout(() => {
-        if (bolt.parentElement) {
-            bolt.remove();
+        if (svgClone.parentElement) {
+            svgClone.remove();
         }
-    }, 400); // Must be >= animation duration
+    }, 600); // 必须大于等于动画时长
 }
 
 async function renderCharacterSheet(characterName) {
@@ -675,7 +731,7 @@ async function renderCharacterSheet(characterName) {
             
             function flashLoop() {
                 createLightningBolt(container);
-                const randomDelay = Math.random() * 2500 + 400; // 0.4s to 2.9s
+                const randomDelay = Math.random() * 2000 + 500; // 0.5s to 2.5s
                 lightningTimeoutId = setTimeout(flashLoop, randomDelay);
             }
             flashLoop();
@@ -954,9 +1010,6 @@ function toggleTheme() {
 document.addEventListener('DOMContentLoaded', async () => {
     let isCharPageInitialized = false;
 
-    // 0. 首先加载外部立绘配置
-    await fetchCharacterImages();
-
     // 1. 基础UI交互
     highlightQuotes();
     parseAndCreateOptions();
@@ -965,6 +1018,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 2. 角色页面按钮点击事件
     charPageBtn.addEventListener('click', async () => {
+        // 每次打开角色页面时，都重新获取最新的立绘配置
+        await fetchCharacterImages();
+
         if (typeof getChatMessages !== 'function' || typeof getCurrentMessageId !== 'function') {
             console.error("错误：未在 SillyTavern 环境中。");
             characterCard.innerHTML = `<h2 class="character-name">环境错误</h2><p>无法找到 SillyTavern 的 getChatMessages 或 getCurrentMessageId 函数。</p>`;
