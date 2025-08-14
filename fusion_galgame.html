@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galgame 交互界面</title>
+<style>
+    /* --- 全局与基础设置 --- */
+    :root {
+        /* --- 日间模式 --- */
+        --bg-main: #f0e8f8;
+        --bg-spot: rgba(220, 200, 240, 0.6);
+        --text-color: #3e3a44;
+        --text-bg-gold: rgba(253, 245, 230, 0.9);
+        --card-border-color: #d8c8e8;
+        --emphasis-color: #8a4fff;
+        --quote-color: #6a5acd;
+        --character-panel-bg: rgba(255, 255, 255, 0.15);
+        --character-panel-shadow: rgba(0,0,0,0.2);
+        --timeline-dot-bg: #a080c0;
+        --timeline-line-bg: #d8c8e8;
+        --frame-color-inner: white;
+        --frame-color-outer: #d8c8e8;
+
+        /* --- 夜间模式 --- */
+        --bg-main-dark: #1a202c;
+        --text-color-dark: #c8d3e0;
+        --text-bg-gold-dark: rgba(45, 55, 72, 0.9);
+        --card-border-color-dark: #4a5568;
+        --emphasis-color-dark: #90cdf4;
+        --quote-color-dark: #89b8ff;
+        --character-panel-bg-dark: rgba(26, 32, 44, 0.2);
+        --frame-color-inner-dark: #4a5568;
+        --frame-color-outer-dark: #1a202c;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+        font-family: "Georgia", "Source Han Serif SC", "Songti SC", serif;
+        background-color: var(--bg-main);
+        color: var(--text-color);
+        transition: background-color 0.5s ease, color 0.5s ease;
+        overflow: hidden;
+        padding: 15px;
+        box-sizing: border-box;
+    }
+    body::before {
+        content: '';
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        border: 5px solid var(--frame-color-inner);
+        outline: 10px solid var(--frame-color-outer);
+        z-index: 9999;
+        pointer-events: none;
+        transition: all 0.5s ease;
+    }
+
+    .game-container {
+        display: flex;
+        width: 100%;
+        height: 100%;
+    }
+    
+    /* --- 视图切换 --- */
+    .view {
+        display: none;
+        width: 100%;
+        height: 100%;
+        animation: fadeIn 0.5s ease-in-out;
+    }
+    .view.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* --- 正文视图 --- */
+    .main-view-bg {
+        min-height: 100vh;
+        padding: 2rem;
+        background:
+            radial-gradient(circle at 15% 20%, var(--bg-spot), transparent 40%),
+            radial-gradient(circle at 45% 50%, var(--bg-spot), transparent 50%),
+            radial-gradient(circle at 80% 75%, var(--bg-spot), transparent 45%);
+        background-size: 100% 100%;
+        background-attachment: fixed;
+    }
+    .content-prose {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 2rem 2.5rem;
+        font-size: 1.1rem;
+        line-height: 1.8;
+        white-space: pre-wrap;
+        text-align: justify;
+        background-color: var(--text-bg-gold);
+        border-radius: 12px;
+        border: 1px solid var(--card-border-color);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        box-shadow: 0 6px 25px rgba(0,0,0,0.08);
+        position: relative;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        opacity: 0;
+        animation: content-enter 0.8s 0.2s ease-out forwards;
+    }
+    @keyframes content-enter {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .content-prose::before,
+    .content-prose::after {
+        content: '';
+        position: absolute;
+        width: 25px;
+        height: 25px;
+        border-color: var(--emphasis-color);
+        border-style: solid;
+        opacity: 0.6;
+        transition: all 0.3s ease;
+    }
+    .content-prose::before {
+        top: -5px;
+        left: -5px;
+        border-width: 2px 0 0 2px;
+        border-top-left-radius: 12px;
+    }
+    .content-prose::after {
+        bottom: -5px;
+        right: -5px;
+        border-width: 0 2px 2px 0;
+        border-bottom-right-radius: 12px;
+    }
+    .content-prose:hover::before,
+    .content-prose:hover::after {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+    .content-prose em { color: var(--emphasis-color); font-style: italic; }
+    .content-prose .dialogue-quote { color: var(--quote-color); font-weight: 500; }
+
+    /* --- 角色页面 --- */
+    .character-page {
+        display: grid;
+        grid-template-columns: 1fr 480px; /* 左侧立绘区域，右侧信息面板 */
+        height: 100%;
+        width: 100%;
+        position: relative;
+        overflow: hidden;
+        background: var(--bg-main); /* 添加一个基础背景色 */
+    }
+
+    .character-sprite-container {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: flex-end; /* 角色贴底 */
+        position: relative;
+        opacity: 0;
+        animation: sprite-fade-in 0.8s 0.2s ease-out forwards;
+    }
+
+    @keyframes sprite-fade-in {
+        from { opacity: 0; transform: translateX(-30px); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+
+    .character-sprite {
+        max-width: 100%;
+        max-height: 95%;
+        object-fit: contain; /* 保持立绘比例 */
+        transition: opacity 0.5s ease-in-out;
+    }
+
+    .sprite-loader {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: var(--text-color);
+        font-size: 1.5rem;
+        font-weight: bold;
+        display: none; /* Initially hidden */
+        z-index: 10;
+        text-shadow: 0 0 5px white;
+    }
+
+    .character-info-panel {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        background: var(--text-bg-gold);
+        border-left: 2px solid var(--card-border-color);
+        box-shadow: -5px 0 25px rgba(0,0,0,0.1);
+        transform: translateX(100%);
+        animation: panel-slide-in 0.6s forwards cubic-bezier(0.25, 1, 0.5, 1);
+        position: relative; /* 为伪元素定位 */
+        overflow: hidden; /* 隐藏超出部分的动画 */
+    }
+
+    /* --- 动态边框与主题动画 --- */
+    @keyframes snow-fall {
+        0% { transform: translateY(0); opacity: 1; }
+        100% { transform: translateY(100vh); opacity: 0; }
+    }
+    @keyframes lightning-flicker {
+        0%   { box-shadow: 0 0 5px #9b59b6, 0 0 10px #9b59b6, inset 0 0 5px #d3a7e6; }
+        50%  { box-shadow: 0 0 20px #9b59b6, 0 0 35px #d3a7e6, inset 0 0 15px #9b59b6; }
+        100% { box-shadow: 0 0 5px #9b59b6, 0 0 10px #9b59b6, inset 0 0 5px #d3a7e6; }
+    }
+    @keyframes fire-flicker {
+        0%   { box-shadow: 0 0 10px #e74c3c, 0 0 5px #ffa500, inset 0 0 5px #ff4500; }
+        50%  { box-shadow: 0 0 25px #e74c3c, 0 0 15px #ffa500, inset 0 0 12px #ff4500; }
+        100% { box-shadow: 0 0 10px #e74c3c, 0 0 5px #ffa500, inset 0 0 5px #ff4500; }
+    }
+
+    /* --- 角色主题化 --- */
+    .snow-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden; z-index: 2; }
+    .snowflake { position: absolute; top: -20px; background: #3498db; border-radius: 50%; animation: snow-fall 10s linear infinite; }
+
+    .character-info-panel.theme-luoqianshuang { --emphasis-color: #3498db; }
+
+    .character-info-panel.theme-linyujing {
+        --emphasis-color: #9b59b6;
+    }
+
+    .character-info-panel.theme-chenyuhuan {
+        --emphasis-color: #e74c3c;
+    }
+    .character-info-panel.theme-chenyuhuan::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        border-radius: inherit;
+        animation: fire-flicker 2.5s ease-in-out infinite;
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    /* --- 新增：随机闪电效果 --- */
+    .lightning-container {
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        pointer-events: none;
+        overflow: hidden;
+        z-index: 3; /* 确保在最上层 */
+    }
+    .lightning-bolt {
+        position: absolute;
+        background: linear-gradient(to bottom, rgba(255,255,255,0.9) 0%, rgba(211, 167, 230, 0.7) 70%, rgba(155, 89, 182, 0) 100%);
+        width: 3px;
+        border-radius: 2px;
+        box-shadow: 0 0 4px #fff, 0 0 8px #fff, 0 0 12px #9b59b6;
+        opacity: 0;
+        transform-origin: center top;
+    }
+    .lightning-bolt.flash {
+        animation: lightning-flash 0.4s ease-out;
+    }
+    @keyframes lightning-flash {
+        0% { opacity: 0; }
+        10% { opacity: 0.6; }
+        20% { opacity: 1; }
+        30% { opacity: 0.8; }
+        100% { opacity: 0; }
+    }
+    
+    @keyframes panel-slide-in {
+        to { transform: translateX(0); }
+    }
+
+    .character-tabs {
+        flex-shrink: 0;
+        display: flex;
+        justify-content: center;
+        padding: 0.5rem;
+        background: rgba(0,0,0,0.05);
+        border-bottom: 1px solid var(--card-border-color);
+    }
+
+    .tab-button {
+        padding: 0.6rem 1.2rem;
+        margin: 0 0.3rem;
+        border: none;
+        background: transparent;
+        color: var(--text-color);
+        font-size: 1rem;
+        font-weight: bold;
+        cursor: pointer;
+        border-radius: 6px;
+        position: relative;
+        transition: all 0.3s ease;
+    }
+    .tab-button::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0;
+        height: 3px;
+        background-color: var(--emphasis-color);
+        transition: width 0.3s ease;
+    }
+
+    .tab-button.active, .tab-button:hover {
+        color: var(--emphasis-color);
+    }
+    .tab-button.active::after {
+        width: 80%;
+    }
+
+    .character-content {
+        flex-grow: 1;
+        overflow-y: auto; /* 让内容区可以滚动 */
+        padding: 2rem;
+    }
+
+    .character-card {
+        background: transparent; /* 卡片本身透明，由父级面板提供背景 */
+        color: var(--text-color);
+        width: 100%;
+        max-width: none;
+        padding: 0;
+        border: none;
+        box-shadow: none;
+        border-radius: 0;
+        max-height: none;
+        opacity: 0;
+        animation: card-content-fade-in 0.5s 0.4s forwards;
+    }
+
+    @keyframes card-content-fade-in {
+        to { opacity: 1; }
+    }
+
+    .character-name {
+        font-size: 2.8rem;
+        font-weight: bold;
+        /* 您可以在这里更改字体。例如 'Kaiti', 'SimSun' 等。
+           也可以使用 @font-face 规则引入外部字体文件。 */
+        font-family: "Source Han Serif SC", "Songti SC", serif;
+        color: var(--emphasis-color);
+        margin-bottom: 2rem;
+        text-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+    }
+    .stats-grid {
+        display: grid; grid-template-columns: auto 1fr auto;
+        gap: 0.5rem 1rem; align-items: center; margin: 1.5rem 0;
+    }
+    .stat-label { font-weight: bold; font-size: 0.9rem; }
+    .stat-bar {
+        width: 100%; background-color: rgba(0,0,0,0.1);
+        border-radius: 5px; overflow: hidden; height: 18px;
+        border: 1px solid var(--card-border-color);
+    }
+    .stat-bar-inner {
+        height: 100%; border-radius: 5px;
+        transition: width 1s cubic-bezier(0.25, 1, 0.5, 1);
+        width: 0%;
+    }
+    .property[data-char="洛千霜"][data-type="好感度"] .stat-bar-inner { background: linear-gradient(90deg, #a0e7ff, #009dff); }
+    .property[data-char="洛千霜"][data-type="了解度"] .stat-bar-inner { background: linear-gradient(90deg, #a7ffeb, #00bfa5); }
+    .property[data-char="林语惊"][data-type="好感度"] .stat-bar-inner { background: linear-gradient(90deg, #e1caff, #a259ff); }
+    .property[data-char="林语惊"][data-type="了解度"] .stat-bar-inner { background: linear-gradient(90deg, #e0e0e0, #9e9e9e); }
+    .property[data-char="陈予欢"][data-type="好感度"] .stat-bar-inner { background: linear-gradient(90deg, #ffd700, #ff4500); }
+    .property[data-char="陈予欢"][data-type="了解度"] .stat-bar-inner { background: linear-gradient(90deg, #ffcc80, #ff9800); }
+    .stat-value {
+        font-size: 1.2rem; font-weight: bold;
+        min-width: 40px; text-align: right;
+    }
+    .events-timeline {
+        list-style: none; padding-left: 1rem;
+        border-left: 2px solid var(--timeline-line-bg);
+        margin-top: 1.5rem;
+        color: var(--text-color);
+    }
+    .event-item { position: relative; padding-bottom: 1.5rem; }
+    .event-item:last-child { padding-bottom: 0; }
+    .event-item::before {
+        content: ''; position: absolute; left: -1.5rem; top: 5px;
+        width: 12px; height: 12px; border-radius: 50%;
+        background-color: var(--timeline-dot-bg);
+        border: 2px solid var(--text-bg-gold);
+    }
+    .event-item p { font-size: 0.95rem; line-height: 1.6; }
+
+    /* --- UI & Option 按钮 --- */
+    .ui-buttons {
+        position: fixed; top: 20px; right: 20px;
+        z-index: 1010; display: flex; gap: 10px;
+    }
+    .ui-button {
+        width: 48px; height: 48px; border-radius: 50%;
+        border: 1px solid var(--card-border-color);
+        background: var(--card-bg-color); color: var(--text-color);
+        font-size: 1.2rem; cursor: pointer; display: flex;
+        justify-content: center; align-items: center;
+        transition: all 0.3s ease;
+    }
+    .ui-button:hover { transform: scale(1.1); border-color: var(--emphasis-color); }
+    .options-container {
+        max-width: 800px; margin: 1rem auto 0 auto;
+        padding: 0 2.5rem 1.5rem 2.5rem; display: flex;
+        flex-direction: column; gap: 0.75rem;
+    }
+    .option-button {
+        display: block; width: 100%; padding: 0.8rem 1.2rem;
+        font-family: "Georgia", "Source Han Serif SC", "Songti SC", serif;
+        font-size: 1rem; text-align: left; color: var(--text-color);
+        background-color: rgba(255, 255, 255, 0.4);
+        border: 1px solid var(--card-border-color);
+        border-radius: 6px; cursor: pointer; transition: all 0.2s ease;
+    }
+    .option-button:hover {
+        border-color: var(--emphasis-color);
+        background-color: rgba(255, 255, 255, 0.7);
+    }
+
+    /* --- 响应式设计 --- */
+    @media (max-width: 768px) {
+        .main-view-bg { padding: 1rem; }
+        .content-prose { padding: 1.5rem 1rem; font-size: 1rem; }
+        .ui-buttons { top: 15px; right: 15px; }
+        .character-page {
+            display: flex;
+            flex-direction: column;
+            height: 100%; /* 确保flex容器占满视口高度 */
+        }
+        .character-sprite-container {
+            flex-shrink: 0; /* 防止立绘区域被压缩 */
+            width: 100%;
+            height: 45vh; /* 占据约一半屏幕高度 */
+            opacity: 1;
+            animation: none;
+        }
+        .character-sprite {
+            max-height: 100%;
+        }
+        .character-info-panel {
+            flex-grow: 1; /* 占据剩余空间 */
+            width: 100%;
+            border-left: none;
+            box-shadow: none;
+            transform: none;
+            animation: none; /* 移除所有动画，包括主题动画 */
+            display: flex; /* 使用flex布局来管理内部滚动 */
+            flex-direction: column;
+            overflow: hidden; /* 父级隐藏溢出 */
+        }
+        .character-info-panel .character-content {
+            overflow-y: auto; /* 只让内容区滚动 */
+            -webkit-overflow-scrolling: touch; /* 优化iOS滚动体验 */
+        }
+        /* 在移动端禁用主题动画，因为它们可能导致性能问题或布局错乱 */
+        .character-info-panel.theme-linyujing,
+        .character-info-panel.theme-chenyuhuan {
+            animation: none;
+        }
+        .snow-container {
+            display: none; /* 移动端隐藏雪花 */
+        }
+        .character-content { padding: 1.5rem; }
+        .character-name { font-size: 2.2rem; }
+        .options-container { padding: 0 1rem 1.5rem 1rem; }
+    }
+
+    /* --- 夜间模式 --- */
+    body.dark-mode {
+        --bg-main: var(--bg-main-dark);
+        --text-color: var(--text-color-dark);
+        --text-bg-gold: var(--text-bg-gold-dark);
+        --card-border-color: var(--card-border-color-dark);
+        --emphasis-color: var(--emphasis-color-dark);
+        --quote-color: var(--quote-color-dark);
+        --character-panel-bg: var(--character-panel-bg-dark);
+        --frame-color-inner: var(--frame-color-inner-dark);
+        --frame-color-outer: var(--frame-color-outer-dark);
+    }
+    body.dark-mode .stat-bar {
+        background-color: rgba(255,255,255,0.1);
+    }
+</style>
+</head>
+<body>
+
+<div class="game-container">
+    <!-- UI 按钮 -->
+    <div class="ui-buttons">
+        <button id="theme-toggle-btn" class="ui-button" title="切换模式">☀️</button>
+        <button id="char-page-btn" class="ui-button" title="角色信息">👤</button>
+        <button id="return-btn" class="ui-button" title="返回正文" style="display: none;">📖</button>
+    </div>
+
+    <!-- 主要故事视图 -->
+    <div id="main-view" class="view active">
+        <div class="main-view-bg">
+            <article class="content-prose">
+$1
+            </article>
+            <div id="options-container" class="options-container"></div>
+        </div>
+    </div>
+
+    <!-- 角色信息视图 -->
+    <div id="character-view" class="view">
+        <div id="character-page" class="character-page">
+            <div class="character-sprite-container">
+                <div id="sprite-loader" class="sprite-loader">加载中...</div>
+                <img id="character-sprite" class="character-sprite" src="" alt="Character Sprite">
+            </div>
+            <div class="character-info-panel">
+                <div id="character-tabs" class="character-tabs"></div>
+                <div class="character-content">
+                    <div id="character-card" class="character-card">
+                        <!-- 内容将由JS动态生成 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+'use strict';
+
+// --- DOM 元素获取 ---
+const mainView = document.getElementById('main-view');
+const characterView = document.getElementById('character-view');
+const charPageBtn = document.getElementById('char-page-btn');
+const returnBtn = document.getElementById('return-btn');
+const themeToggleBtn = document.getElementById('theme-toggle-btn');
+const characterPage = document.getElementById('character-page');
+const characterInfoPanel = document.querySelector('.character-info-panel');
+const charTabs = document.getElementById('character-tabs');
+const characterCard = document.getElementById('character-card');
+const characterSprite = document.getElementById('character-sprite');
+const spriteLoader = document.getElementById('sprite-loader');
+const articleElement = document.querySelector('.content-prose');
+const optionsContainer = document.getElementById('options-container');
+
+// --- 动态角色立绘配置 ---
+
+// 1. 将您创建的 character_images.json 文件上传到 GitHub 仓库。
+// 2. 在 GitHub 上打开这个文件，点击 "Raw" 按钮。
+// 3. 将浏览器地址栏中的链接（以 raw.githubusercontent.com 开头）复制到下面。
+// 4. 您也可以使用 jsDelivr CDN 来加速访问, 格式为: https://cdn.jsdelivr.net/gh/你的用户名/你的仓库名@分支名/文件路径/character_images.json
+const characterImagesUrl = 'https://raw.githubusercontent.com/Molilili001/image/refs/heads/main/character_images.json'; // <-- 您提供的 GitHub Raw URL
+
+let characterImageOverrides = {};
+
+async function fetchCharacterImages() {
+    try {
+        // 通过添加时间戳参数来“破坏”浏览器缓存，确保每次都获取最新文件
+        const urlWithCacheBust = `${characterImagesUrl}?t=${new Date().getTime()}`;
+        const response = await fetch(urlWithCacheBust);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        characterImageOverrides = await response.json();
+        console.log("角色立绘配置加载成功:", characterImageOverrides);
+
+    } catch (error) {
+        console.error("无法加载或解析角色立绘配置文件:", error);
+        
+        // 弹出明确的错误提示
+        alert(`错误：无法从GitHub加载最新的立绘配置文件。\n\n原因: ${error.message}\n\n请检查链接是否正确，以及JSON文件格式是否无误。页面将暂时使用内置的备用图片。`);
+
+        // 加载失败时使用备用数据，以免页面出错
+        characterImageOverrides = {
+            '洛千霜': 'https://cdn.jsdelivr.net/gh/Molilili001/image/test/4%E3%80%81%E5%88%86%E5%9D%97%E6%94%BE%E5%A4%A7_None_00004_.png',
+            '林语惊': 'https://cdn.jsdelivr.net/gh/Molilili001/image/test/4%E3%80%81%E5%88%86%E5%9D%97%E6%94%BE%E5%A4%A7_None_00003_.png',
+            '陈予欢': 'https://cdn.jsdelivr.net/gh/Molilili001/image/test/4%E3%80%81%E5%88%86%E5%9D%97%E6%94%BE%E5%A4%A7_None_00002_.png'
+        };
+        console.log("已加载备用立绘数据。");
+    }
+}
+
+
+// --- 核心功能函数 ---
+
+function switchView(viewToShow) {
+    mainView.classList.toggle('active', viewToShow === 'main');
+    characterView.classList.toggle('active', viewToShow === 'character');
+    charPageBtn.style.display = viewToShow === 'main' ? 'flex' : 'none';
+    returnBtn.style.display = viewToShow === 'character' ? 'flex' : 'none';
+}
+
+function animateValue(element, start, end, duration) {
+    let startTimestamp = null;
+    const step = (timestamp) => {
+        if (!startTimestamp) startTimestamp = timestamp;
+        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+        element.textContent = Math.floor(progress * (end - start) + start);
+        if (progress < 1) {
+            window.requestAnimationFrame(step);
+        }
+    };
+    window.requestAnimationFrame(step);
+}
+
+let lightningTimeoutId = null; // 用于控制闪电效果的定时器
+
+function createLightningBolt(container) {
+    if (!container) return;
+    const bolt = document.createElement('div');
+    bolt.className = 'lightning-bolt';
+
+    const x = Math.random() * 100;
+    const y = Math.random() * 100;
+    
+    bolt.style.left = `${x}%`;
+    bolt.style.top = `${y}%`;
+    bolt.style.height = `${Math.random() * 100 + 50}px`; // 50px to 150px
+    bolt.style.transform = `rotate(${Math.random() * 40 - 20}deg)`;
+
+    container.appendChild(bolt);
+    
+    bolt.classList.add('flash');
+
+    // Remove the bolt after the animation completes
+    setTimeout(() => {
+        if (bolt.parentElement) {
+            bolt.remove();
+        }
+    }, 400); // Must be >= animation duration
+}
+
+async function renderCharacterSheet(characterName) {
+    // --- 角色主题化 ---
+    const themeMap = {
+        '洛千霜': 'theme-luoqianshuang',
+        '林语惊': 'theme-linyujing',
+        '陈予欢': 'theme-chenyuhuan'
+    };
+    
+    // 1. 清理旧主题和动态元素
+    characterInfoPanel.className = 'character-info-panel'; // 重置所有类
+    const oldSnow = document.querySelector('.snow-container');
+    if (oldSnow) oldSnow.remove();
+    
+    if (lightningTimeoutId) {
+        clearTimeout(lightningTimeoutId);
+        lightningTimeoutId = null;
+    }
+    const oldLightningContainer = characterInfoPanel.querySelector('.lightning-container');
+    if (oldLightningContainer) oldLightningContainer.remove();
+
+    // 2. 应用新主题
+    if (themeMap[characterName]) {
+        characterInfoPanel.classList.add(themeMap[characterName]);
+        
+        // 3. 根据角色应用特定动态效果
+        if (characterName === '洛千霜') {
+            const snowContainer = document.createElement('div');
+            snowContainer.className = 'snow-container';
+            for (let i = 0; i < 40; i++) {
+                const snowflake = document.createElement('div');
+                snowflake.className = 'snowflake';
+                const size = Math.random() * 3.5 + 1 + 'px';
+                snowflake.style.width = size;
+                snowflake.style.height = size;
+                snowflake.style.left = Math.random() * 100 + '%';
+                snowflake.style.animationDuration = (Math.random() * 7 + 8) + 's';
+                snowflake.style.animationDelay = Math.random() * 10 + 's';
+                snowflake.style.opacity = Math.random() * 0.8 + 0.1;
+                snowContainer.appendChild(snowflake);
+            }
+            characterPage.appendChild(snowContainer);
+        } else if (characterName === '林语惊') {
+            const container = document.createElement('div');
+            container.className = 'lightning-container';
+            characterInfoPanel.appendChild(container);
+            
+            function flashLoop() {
+                createLightningBolt(container);
+                const randomDelay = Math.random() * 2500 + 400; // 0.4s to 2.9s
+                lightningTimeoutId = setTimeout(flashLoop, randomDelay);
+            }
+            flashLoop();
+        }
+    }
+
+    let statData;
+    try {
+        const messages = await getChatMessages(getCurrentMessageId());
+        if (!messages || messages.length === 0 || !messages[0].data || !messages[0].data.stat_data) {
+            throw new Error("stat_data not found in message object.");
+        }
+        statData = messages[0].data.stat_data;
+    } catch (e) {
+        console.error("Failed to get stat_data:", e);
+        characterCard.innerHTML = `<h2 class="character-name">错误</h2><p>获取角色数据失败: ${e.message}</p>`;
+        return;
+    }
+
+    if (!statData[characterName]) {
+        characterCard.innerHTML = `<h2 class="character-name">错误</h2><p>在数据中找不到角色: ${characterName}</p>`;
+        return;
+    }
+
+    const charData = statData[characterName];
+    let imageUrlSource = characterImageOverrides[characterName] || (charData['图片'] && Array.isArray(charData['图片']) && charData['图片'][0] ? charData['图片'][0] : '');
+    let imageUrl;
+
+    // --- 新增：随机立绘逻辑 ---
+    // 如果imageUrlSource是一个数组，则从中随机选择一个
+    if (Array.isArray(imageUrlSource)) {
+        imageUrl = imageUrlSource[Math.floor(Math.random() * imageUrlSource.length)];
+    } else {
+        imageUrl = imageUrlSource;
+    }
+    // --- 结束 ---
+
+    // --- 更新立绘（带预加载）---
+    if (characterSprite.src !== imageUrl && imageUrl) {
+        characterSprite.style.opacity = 0;
+        spriteLoader.textContent = '加载中...';
+        spriteLoader.style.display = 'block';
+
+        const preloader = new Image();
+        preloader.onload = () => {
+            characterSprite.src = imageUrl;
+            characterSprite.alt = `${characterName} Sprite`;
+            spriteLoader.style.display = 'none';
+            characterSprite.style.opacity = 1;
+        };
+        preloader.onerror = () => {
+            console.error(`立绘加载失败: ${imageUrl}`);
+            spriteLoader.textContent = '立绘加载失败';
+            // 可以在这里设置一个默认的错误图片
+            // characterSprite.src = 'path/to/error.png';
+            // characterSprite.style.opacity = 1;
+        };
+        preloader.src = imageUrl;
+
+    } else if (!imageUrl) {
+         // 如果没有图片URL，则隐藏图片和加载提示
+        characterSprite.style.opacity = 0;
+        spriteLoader.style.display = 'none';
+    }
+
+    characterCard.innerHTML = ''; // 清空旧内容
+
+    const nameEl = document.createElement('h2');
+    nameEl.className = 'character-name';
+    nameEl.textContent = characterName;
+    characterCard.appendChild(nameEl);
+
+    for (const key in charData) {
+        if (!Object.hasOwnProperty.call(charData, key) || key === '图片' || key === '在场状态') continue;
+
+        const value = charData[key][0];
+        const description = charData[key][1] || "";
+
+        if (typeof value === 'number') {
+            const statsGrid = document.createElement('div');
+            statsGrid.className = 'stats-grid property';
+            statsGrid.dataset.type = key;
+            statsGrid.dataset.char = characterName;
+
+            const label = document.createElement('span');
+            label.className = 'stat-label';
+            label.textContent = key;
+
+            const barContainer = document.createElement('div');
+            barContainer.className = 'stat-bar';
+            const barInner = document.createElement('div');
+            barInner.className = 'stat-bar-inner';
+            
+            barContainer.appendChild(barInner);
+
+            const valueEl = document.createElement('span');
+            valueEl.className = 'stat-value';
+
+            statsGrid.appendChild(label);
+            statsGrid.appendChild(barContainer);
+            statsGrid.appendChild(valueEl);
+            characterCard.appendChild(statsGrid);
+
+            let percentage = value;
+            if (description.includes("[-100, 100]")) {
+                percentage = ((value + 100) / 200) * 100;
+            }
+            percentage = Math.max(0, Math.min(100, percentage));
+
+            setTimeout(() => { barInner.style.width = `${percentage}%`; }, 100);
+            animateValue(valueEl, 0, value, 800);
+
+        } else if (Array.isArray(value) && key === '重要事件') {
+             if (value.length > 1) { // 确保有事件可显示
+                const timeline = document.createElement('ul');
+                timeline.className = 'events-timeline';
+                
+                const title = document.createElement('h3');
+                title.style.marginTop = '2rem'; // 与上方内容分隔
+                title.textContent = key;
+                characterCard.appendChild(title);
+
+                for (let i = 1; i < value.length; i++) { // 从索引1开始，跳过元数据
+                    if(value[i] === '$__META_EXTENSIBLE__$') continue; // 跳过占位符
+                    const li = document.createElement('li');
+                    li.className = 'event-item';
+                    const p = document.createElement('p');
+                    p.textContent = value[i];
+                    li.appendChild(p);
+                    timeline.appendChild(li);
+                }
+                characterCard.appendChild(timeline);
+            }
+        } else if (Array.isArray(value) && value.length > 1) { // 处理其他数组类型数据（如果未来有的话）
+            const timeline = document.createElement('ul');
+            timeline.className = 'events-timeline';
+            
+            const title = document.createElement('h3');
+            title.textContent = key;
+            timeline.appendChild(title);
+
+            for (let i = 1; i < value.length; i++) {
+                const li = document.createElement('li');
+                li.className = 'event-item';
+                const p = document.createElement('p');
+                p.textContent = value[i];
+                li.appendChild(p);
+                timeline.appendChild(li);
+            }
+            characterCard.appendChild(timeline);
+        }
+    }
+
+    document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.char === characterName);
+    });
+}
+
+async function initializeCharacterPage() {
+    let statData;
+    try {
+        const messages = await getChatMessages(getCurrentMessageId());
+        if (!messages || messages.length === 0 || !messages[0].data || !messages[0].data.stat_data) {
+            throw new Error("stat_data not found in message object.");
+        }
+        statData = messages[0].data.stat_data;
+    } catch (e) {
+        console.error("Failed to initialize character page:", e);
+        characterCard.innerHTML = `<h2 class="character-name">错误</h2><p>初始化失败: ${e.message}</p>`;
+        return;
+    }
+
+    charTabs.innerHTML = '';
+    const characters = Object.keys(statData).filter(key => key !== '世界' && statData[key]['在场状态'] && statData[key]['在场状态'][0]);
+
+    characters.forEach(name => {
+        const button = document.createElement('button');
+        button.className = 'tab-button';
+        button.dataset.char = name;
+        button.textContent = name;
+        button.addEventListener('click', () => renderCharacterSheet(name));
+        charTabs.appendChild(button);
+    });
+
+    if (characters.length > 0) {
+        await renderCharacterSheet(characters[0]);
+    } else {
+        characterCard.innerHTML = `<h2 class="character-name">无角色</h2><p>当前没有在场的角色。</p>`;
+    }
+}
+
+async function sendToSillyTavern(text) {
+    const slashCommand = `/send ${text}\n|\n/trigger`;
+    try {
+        if (typeof triggerSlash === 'function') {
+            await triggerSlash(slashCommand, 'Send');
+        } else {
+            console.log("SillyTavern函数 'triggerSlash' 未找到。");
+            navigator.clipboard.writeText(slashCommand).then(() => {
+                alert('SillyTavern连接失败！指令已复制到剪贴板，请手动粘贴发送。');
+            }).catch(err => {
+                alert('复制到剪贴板失败，请手动复制选项内容。');
+                console.error('复制失败:', err);
+            });
+        }
+    } catch (error) {
+        console.error('与SillyTavern交互时发生错误:', error);
+        alert('与SillyTavern交互时发生错误，详情请查看浏览器控制台。');
+    }
+}
+
+function parseAndCreateOptions() {
+    if (!articleElement || !optionsContainer) return;
+    
+    let content = articleElement.innerHTML;
+
+    const optionRegex = /<option>(.*?)<\/option>/g;
+    const detailsRegex = /<details>[\s\S]*?<\/details>/g;
+    const updateVarRegex = /<UpdateVariable>[\s\S]*?<\/UpdateVariable>/g;
+
+    const optionMatches = Array.from(content.matchAll(optionRegex));
+
+    content = content.replace(optionRegex, '')
+                     .replace(detailsRegex, '')
+                     .replace(updateVarRegex, '')
+                     .trim();
+    
+    articleElement.innerHTML = content;
+
+    optionsContainer.innerHTML = '';
+    if (optionMatches.length > 0) {
+        optionsContainer.style.display = 'flex';
+        optionMatches.forEach(match => {
+            const optionText = match[1].trim();
+            const button = document.createElement('button');
+            button.className = 'option-button';
+            button.innerHTML = optionText;
+            button.addEventListener('click', () => sendToSillyTavern(optionText));
+            optionsContainer.appendChild(button);
+        });
+    } else {
+        optionsContainer.style.display = 'none';
+    }
+}
+
+function highlightQuotes() {
+    if (!articleElement) return;
+    if(articleElement.innerHTML.includes('class="dialogue-quote"')) return;
+    
+    const quoteRegex = /(["“])(.+?)(["”])/g;
+    const replacement = '<span class="dialogue-quote">$&</span>';
+    articleElement.innerHTML = articleElement.innerHTML.replace(quoteRegex, replacement);
+}
+
+// --- 主题切换逻辑 ---
+const THEME_STORAGE_KEY = 'galgame_theme';
+
+function applyTheme(theme) {
+    if (theme === 'dark') {
+        document.body.classList.add('dark-mode');
+        themeToggleBtn.textContent = '☀️';
+    } else {
+        document.body.classList.remove('dark-mode');
+        themeToggleBtn.textContent = '🌙';
+    }
+}
+
+function toggleTheme() {
+    const isDark = document.body.classList.contains('dark-mode');
+    const newTheme = isDark ? 'light' : 'dark';
+    applyTheme(newTheme);
+    localStorage.setItem(THEME_STORAGE_KEY, newTheme);
+}
+
+// --- 初始化与事件监听 ---
+document.addEventListener('DOMContentLoaded', async () => {
+    let isCharPageInitialized = false;
+
+    // 0. 首先加载外部立绘配置
+    await fetchCharacterImages();
+
+    // 1. 基础UI交互
+    highlightQuotes();
+    parseAndCreateOptions();
+    returnBtn.addEventListener('click', () => switchView('main'));
+    themeToggleBtn.addEventListener('click', toggleTheme);
+
+    // 2. 角色页面按钮点击事件
+    charPageBtn.addEventListener('click', async () => {
+        if (typeof getChatMessages !== 'function' || typeof getCurrentMessageId !== 'function') {
+            console.error("错误：未在 SillyTavern 环境中。");
+            characterCard.innerHTML = `<h2 class="character-name">环境错误</h2><p>无法找到 SillyTavern 的 getChatMessages 或 getCurrentMessageId 函数。</p>`;
+        } else {
+            try {
+                if (!isCharPageInitialized) {
+                    await initializeCharacterPage();
+                    isCharPageInitialized = true;
+                } else {
+                    const activeTab = document.querySelector('.tab-button.active');
+                    if (activeTab) {
+                        await renderCharacterSheet(activeTab.dataset.char);
+                    } else {
+                        await initializeCharacterPage();
+                    }
+                }
+            } catch (e) {
+                 console.error("点击角色按钮时出错:", e);
+                 characterCard.innerHTML = `<h2 class="character-name">运行时错误</h2><p>${e.message}</p>`;
+            }
+        }
+        switchView('character');
+    });
+
+    // 3. 加载并应用保存的主题
+    const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) || 'light';
+    applyTheme(savedTheme);
+});
+
+</script>
+</body>
+</html>
