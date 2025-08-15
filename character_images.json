@@ -11,7 +11,9 @@
         "path": "洛千霜.特殊事件.表白[0]",
         "value": 2
       },
-      "url": "https://gitgud.io/Molilili/images/-/raw/master/%E6%B4%9B%E5%8D%83%E9%9C%9C/cg/1.png"
+      "url": "https://gitgud.io/Molilili/images/-/raw/master/%E6%B4%9B%E5%8D%83%E9%9C%9C/cg/1.png",
+      "name": "冰雪终融",
+      "description": "和心爱的你直至世界尽头"
     }
   },
   "林语惊": {
@@ -29,7 +31,9 @@
         "path": "林语惊.特殊事件.表白[0]",
         "value": 2
       },
-      "url": "https://gitgud.io/Molilili/images/-/raw/master/%E6%9E%97%E8%AF%AD%E6%83%8A/cg/1.png"
+      "url": "https://gitgud.io/Molilili/images/-/raw/master/%E6%9E%97%E8%AF%AD%E6%83%8A/cg/1.png",
+      "name": "永世相恋",
+      "description": "绝不允许你离开"
     }
   },
   "陈予欢": {
@@ -44,7 +48,9 @@
         "path": "陈予欢.特殊事件.表白[0]",
         "value": 2
       },
-      "url": "https://gitgud.io/Molilili/images/-/raw/master/%E9%99%88%E4%BA%88%E6%AC%A2/cg/1.png"
+      "url": "https://gitgud.io/Molilili/images/-/raw/master/%E9%99%88%E4%BA%88%E6%AC%A2/cg/1.png",
+      "name": "相伴共欢",
+      "description": "爱有4种颜色"
     }
   }
 }
