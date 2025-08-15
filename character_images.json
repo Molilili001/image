@@ -1,17 +1,50 @@
 {
-  "洛千霜": [
-    "https://files.catbox.moe/jxu6t5.png",
-    "https://files.catbox.moe/5jx8ms.png",
-    "https://files.catbox.moe/4csqxf.png"
-  ],
-  "林语惊": [
-    "https://files.catbox.moe/dcs9eg.png",
-    "https://files.catbox.moe/cn2793.png",
-    "https://files.catbox.moe/euo4o8.png"
-  ],
-  "陈予欢": [
-    "https://files.catbox.moe/z0lm1t.png",
-    "https://files.catbox.moe/jja6n4.png",
-    "https://files.catbox.moe/545whp.png"
-  ]
+  "洛千霜": {
+    "sfw": [
+      "https://files.catbox.moe/jxu6t5.png",
+      "https://files.catbox.moe/5jx8ms.png",
+      "https://files.catbox.moe/4csqxf.png",
+      "https://files.catbox.moe/dv5b0z.png"
+    ],
+    "nsfw": [],
+    "hidden": {
+      "unlock_condition": {
+        "path": "洛千霜.特殊事件.表白[0]",
+        "value": 2
+      },
+      "url": null
+    }
+  },
+  "林语惊": {
+    "sfw": [
+      "https://files.catbox.moe/dcs9eg.png",
+      "https://files.catbox.moe/cn2793.png",
+      "https://files.catbox.moe/euo4o8.png"
+    ],
+    "nsfw": [
+      "https://files.catbox.moe/m36wl6.png"
+    ],
+    "hidden": {
+      "unlock_condition": {
+        "path": "林语惊.特殊事件.表白[0]",
+        "value": 2
+      },
+      "url": null
+    }
+  },
+  "陈予欢": {
+    "sfw": [
+      "https://files.catbox.moe/z0lm1t.png",
+      "https://files.catbox.moe/jja6n4.png",
+      "https://files.catbox.moe/545whp.png"
+    ],
+    "nsfw": [],
+    "hidden": {
+      "unlock_condition": {
+        "path": "陈予欢.特殊事件.表白[0]",
+        "value": 2
+      },
+      "url": "https://files.catbox.moe/mtgxry.png"
+    }
+  }
 }
