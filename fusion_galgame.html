@@ -1,1055 +1,1482 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Galgame 交互界面</title>
-<style>
-    /* --- 字体引入 --- */
-    /* 步骤1: 在这里引入您想使用的网络字体。
-       您可以从 Google Fonts (https://fonts.google.com/) 或其他免费字体网站找到 @import 链接。
-       下面是一个示例，引入了“马善政”字体。*/
-    @import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap');
-
-    /* --- 全局与基础设置 --- */
-    :root {
-        /* --- 日间模式 --- */
-        --bg-main: #f0e8f8;
-        --bg-spot: rgba(220, 200, 240, 0.6);
-        --text-color: #3e3a44;
-        --text-bg-gold: rgba(253, 245, 230, 0.9);
-        --card-border-color: #d8c8e8;
-        --emphasis-color: #8a4fff;
-        --quote-color: #6a5acd;
-        --character-panel-bg: rgba(255, 255, 255, 0.15);
-        --character-panel-shadow: rgba(0,0,0,0.2);
-        --timeline-dot-bg: #a080c0;
-        --timeline-line-bg: #d8c8e8;
-        --frame-color-inner: white;
-        --frame-color-outer: #d8c8e8;
-
-        /* --- 夜间模式 --- */
-        --bg-main-dark: #1a202c;
-        --text-color-dark: #c8d3e0;
-        --text-bg-gold-dark: rgba(45, 55, 72, 0.9);
-        --card-border-color-dark: #4a5568;
-        --emphasis-color-dark: #90cdf4;
-        --quote-color-dark: #89b8ff;
-        --character-panel-bg-dark: rgba(26, 32, 44, 0.2);
-        --frame-color-inner-dark: #4a5568;
-        --frame-color-outer-dark: #1a202c;
-    }
-
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    body {
-        font-family: "Georgia", "Source Han Serif SC", "Songti SC", serif;
-        background-color: var(--bg-main);
-        color: var(--text-color);
-        transition: background-color 0.5s ease, color 0.5s ease;
-        overflow: hidden;
-        padding: 15px;
-        box-sizing: border-box;
-    }
-    body::before {
-        content: '';
-        position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        border: 5px solid var(--frame-color-inner);
-        outline: 10px solid var(--frame-color-outer);
-        z-index: 9999;
-        pointer-events: none;
-        transition: all 0.5s ease;
-    }
-
-    .game-container {
-        display: flex;
-        width: 100%;
-        height: 100%;
-    }
-    
-    /* --- 视图切换 --- */
-    .view {
-        display: none;
-        width: 100%;
-        height: 100%;
-        animation: fadeIn 0.5s ease-in-out;
-    }
-    .view.active { display: block; }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-    /* --- 正文视图 --- */
-    .main-view-bg {
-        min-height: 100vh;
-        padding: 2rem;
-        background:
-            radial-gradient(circle at 15% 20%, var(--bg-spot), transparent 40%),
-            radial-gradient(circle at 45% 50%, var(--bg-spot), transparent 50%),
-            radial-gradient(circle at 80% 75%, var(--bg-spot), transparent 45%);
-        background-size: 100% 100%;
-        background-attachment: fixed;
-    }
-    .content-prose {
-        max-width: 800px;
-        margin: 0 auto;
-        padding: 2rem 2.5rem;
-        font-size: 1.1rem;
-        line-height: 1.8;
-        white-space: pre-wrap;
-        text-align: justify;
-        background-color: var(--text-bg-gold);
-        border-radius: 12px;
-        border: 1px solid var(--card-border-color);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        box-shadow: 0 6px 25px rgba(0,0,0,0.08);
-        position: relative;
-        text-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        opacity: 0;
-        animation: content-enter 0.8s 0.2s ease-out forwards;
-    }
-    @keyframes content-enter {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    .content-prose::before,
-    .content-prose::after {
-        content: '';
-        position: absolute;
-        width: 25px;
-        height: 25px;
-        border-color: var(--emphasis-color);
-        border-style: solid;
-        opacity: 0.6;
-        transition: all 0.3s ease;
-    }
-    .content-prose::before {
-        top: -5px;
-        left: -5px;
-        border-width: 2px 0 0 2px;
-        border-top-left-radius: 12px;
-    }
-    .content-prose::after {
-        bottom: -5px;
-        right: -5px;
-        border-width: 0 2px 2px 0;
-        border-bottom-right-radius: 12px;
-    }
-    .content-prose:hover::before,
-    .content-prose:hover::after {
-        opacity: 1;
-        transform: scale(1.1);
-    }
-    .content-prose em { color: var(--emphasis-color); font-style: italic; }
-    .content-prose .dialogue-quote { color: var(--quote-color); font-weight: 500; }
-
-    /* --- 角色页面 --- */
-    .character-page {
-        display: grid;
-        grid-template-columns: 1fr 480px; /* 左侧立绘区域，右侧信息面板 */
-        height: 100%;
-        width: 100%;
-        position: relative;
-        overflow: hidden;
-        background: var(--bg-main); /* 添加一个基础背景色 */
-    }
-
-    .character-sprite-container {
-        width: 100%;
-        height: 100%;
-        display: flex;
-        justify-content: center;
-        align-items: flex-end; /* 角色贴底 */
-        position: relative;
-        opacity: 0;
-        animation: sprite-fade-in 0.8s 0.2s ease-out forwards;
-    }
-
-    @keyframes sprite-fade-in {
-        from { opacity: 0; transform: translateX(-30px); }
-        to { opacity: 1; transform: translateX(0); }
-    }
-
-    .character-sprite {
-        max-width: 100%;
-        max-height: 95%;
-        object-fit: contain; /* 保持立绘比例 */
-        transition: opacity 0.5s ease-in-out;
-    }
-
-    .sprite-loader {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        color: var(--text-color);
-        font-size: 1.5rem;
-        font-weight: bold;
-        display: none; /* Initially hidden */
-        z-index: 10;
-        text-shadow: 0 0 5px white;
-    }
-
-    .character-info-panel {
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        background: var(--text-bg-gold);
-        border-left: 2px solid var(--card-border-color);
-        box-shadow: -5px 0 25px rgba(0,0,0,0.1);
-        transform: translateX(100%);
-        animation: panel-slide-in 0.6s forwards cubic-bezier(0.25, 1, 0.5, 1);
-        position: relative; /* 为伪元素定位 */
-        overflow: hidden; /* 隐藏超出部分的动画 */
-    }
-
-    /* --- 动态边框与主题动画 --- */
-    @keyframes snow-fall {
-        0% { transform: translateY(0); opacity: 1; }
-        100% { transform: translateY(100vh); opacity: 0; }
-    }
-    @keyframes lightning-flicker {
-        0%   { box-shadow: 0 0 5px #9b59b6, 0 0 10px #9b59b6, inset 0 0 5px #d3a7e6; }
-        50%  { box-shadow: 0 0 20px #9b59b6, 0 0 35px #d3a7e6, inset 0 0 15px #9b59b6; }
-        100% { box-shadow: 0 0 5px #9b59b6, 0 0 10px #9b59b6, inset 0 0 5px #d3a7e6; }
-    }
-    @keyframes fire-flicker {
-        0% { background-position: 0% 50%; }
-        25% { background-position: 100% 50%; }
-        50% { background-position: 50% 0%; }
-        75% { background-position: 50% 100%; }
-        100% { background-position: 0% 50%; }
-    }
-
-    /* --- 角色主题化 --- */
-    .snow-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden; z-index: 2; }
-    .snowflake { position: absolute; top: -20px; background: #3498db; border-radius: 50%; animation: snow-fall 10s linear infinite; }
-
-    .character-info-panel.theme-luoqianshuang { --emphasis-color: #3498db; }
-
-    .character-info-panel.theme-linyujing {
-        --emphasis-color: #9b59b6;
-    }
-
-    .character-info-panel.theme-chenyuhuan {
-        --emphasis-color: #e74c3c;
-    }
-    .character-info-panel.theme-chenyuhuan::before {
-        content: '';
-        position: absolute;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background:
-            radial-gradient(circle at 20% 20%, rgba(255, 165, 0, 0.5), transparent 40%),
-            radial-gradient(circle at 80% 70%, rgba(231, 76, 60, 0.6), transparent 50%),
-            radial-gradient(circle at 50% 50%, rgba(255, 215, 0, 0.4), transparent 60%);
-        background-size: 200% 200%;
-        animation: fire-flicker 5s ease-in-out infinite;
-        filter: blur(5px);
-        opacity: 0.8;
-        pointer-events: none;
-        z-index: 0;
-    }
-
-    /* --- 新增：SVG 闪电效果 --- */
-    .lightning-container {
-        position: absolute;
-        top: 0; left: 0; right: 0; bottom: 0;
-        pointer-events: none;
-        overflow: hidden;
-        z-index: 3;
-    }
-    .lightning-svg {
-        position: absolute;
-        width: 150px; /* 定义SVG视口大小 */
-        height: 200px;
-        opacity: 0;
-        filter: drop-shadow(0 0 3px white) drop-shadow(0 0 8px var(--emphasis-color));
-    }
-    .lightning-svg.flash {
-        animation: svg-lightning-flash 0.6s ease-out;
-    }
-    .lightning-svg path {
-        stroke: white;
-        stroke-width: 2;
-        stroke-linecap: round;
-        fill: none;
-        stroke-dasharray: 500; /* 一个足够大的值 */
-        stroke-dashoffset: 500; /* 初始时完全隐藏 */
-    }
-    .flash .lightning-path-main {
-        animation: draw-lightning 0.3s ease-in forwards;
-    }
-    .flash .lightning-path-branch {
-        animation: draw-lightning 0.2s 0.1s ease-in forwards; /* 延迟出现 */
-    }
-
-    @keyframes svg-lightning-flash {
-        0% { opacity: 0; }
-        10% { opacity: 1; }
-        80% { opacity: 1; }
-        100% { opacity: 0; }
-    }
-    @keyframes draw-lightning {
-        to {
-            stroke-dashoffset: 0;
-        }
-    }
-    
-    @keyframes panel-slide-in {
-        to { transform: translateX(0); }
-    }
-
-    .character-tabs {
-        flex-shrink: 0;
-        display: flex;
-        justify-content: center;
-        padding: 0.5rem;
-        background: rgba(0,0,0,0.05);
-        border-bottom: 1px solid var(--card-border-color);
-    }
-
-    .tab-button {
-        padding: 0.6rem 1.2rem;
-        margin: 0 0.3rem;
-        border: none;
-        background: transparent;
-        color: var(--text-color);
-        font-size: 1rem;
-        font-weight: bold;
-        cursor: pointer;
-        border-radius: 6px;
-        position: relative;
-        transition: all 0.3s ease;
-    }
-    .tab-button::after {
-        content: '';
-        position: absolute;
-        bottom: 0;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 0;
-        height: 3px;
-        background-color: var(--emphasis-color);
-        transition: width 0.3s ease;
-    }
-
-    .tab-button.active, .tab-button:hover {
-        color: var(--emphasis-color);
-    }
-    .tab-button.active::after {
-        width: 80%;
-    }
-
-    .character-content {
-        flex-grow: 1;
-        overflow-y: auto; /* 让内容区可以滚动 */
-        padding: 2rem;
-    }
-
-    .character-card {
-        background: transparent; /* 卡片本身透明，由父级面板提供背景 */
-        color: var(--text-color);
-        width: 100%;
-        max-width: none;
-        padding: 0;
-        border: none;
-        box-shadow: none;
-        border-radius: 0;
-        max-height: none;
-        opacity: 0;
-        animation: card-content-fade-in 0.5s 0.4s forwards;
-    }
-
-    @keyframes card-content-fade-in {
-        to { opacity: 1; }
-    }
-
-    .character-name {
-        font-size: 2.8rem;
-        font-weight: bold;
-        /* 步骤2: 在这里使用您引入的字体名称。
-           将您选择的字体名放在最前面。如果字体名包含空格，请用引号括起来。
-           后面的 "Source Han Serif SC" 等是备用字体，如果网络字体加载失败，浏览器会依次尝试它们。
-           您也可以直接使用电脑上已安装的字体，例如 "楷体", "微软雅黑" 等。*/
-        font-family: "Ma Shan Zheng", "Source Han Serif SC", "Songti SC", serif;
-        color: var(--emphasis-color);
-        margin-bottom: 2rem;
-        text-shadow: 1px 1px 3px rgba(0,0,0,0.1);
-    }
-    .stats-grid {
-        display: grid; grid-template-columns: auto 1fr auto;
-        gap: 0.5rem 1rem; align-items: center; margin: 1.5rem 0;
-    }
-    .stat-label { font-weight: bold; font-size: 0.9rem; }
-    .stat-bar {
-        width: 100%; background-color: rgba(0,0,0,0.1);
-        border-radius: 5px; overflow: hidden; height: 18px;
-        border: 1px solid var(--card-border-color);
-    }
-    .stat-bar-inner {
-        height: 100%; border-radius: 5px;
-        transition: width 1s cubic-bezier(0.25, 1, 0.5, 1);
-        width: 0%;
-    }
-    .property[data-char="洛千霜"][data-type="好感度"] .stat-bar-inner { background: linear-gradient(90deg, #a0e7ff, #009dff); }
-    .property[data-char="洛千霜"][data-type="了解度"] .stat-bar-inner { background: linear-gradient(90deg, #a7ffeb, #00bfa5); }
-    .property[data-char="林语惊"][data-type="好感度"] .stat-bar-inner { background: linear-gradient(90deg, #e1caff, #a259ff); }
-    .property[data-char="林语惊"][data-type="了解度"] .stat-bar-inner { background: linear-gradient(90deg, #e0e0e0, #9e9e9e); }
-    .property[data-char="陈予欢"][data-type="好感度"] .stat-bar-inner { background: linear-gradient(90deg, #ffd700, #ff4500); }
-    .property[data-char="陈予欢"][data-type="了解度"] .stat-bar-inner { background: linear-gradient(90deg, #ffcc80, #ff9800); }
-    .stat-value {
-        font-size: 1.2rem; font-weight: bold;
-        min-width: 40px; text-align: right;
-    }
-    .events-timeline {
-        list-style: none; padding-left: 1rem;
-        border-left: 2px solid var(--timeline-line-bg);
-        margin-top: 1.5rem;
-        color: var(--text-color);
-    }
-    .event-item { position: relative; padding-bottom: 1.5rem; }
-    .event-item:last-child { padding-bottom: 0; }
-    .event-item::before {
-        content: ''; position: absolute; left: -1.5rem; top: 5px;
-        width: 12px; height: 12px; border-radius: 50%;
-        background-color: var(--timeline-dot-bg);
-        border: 2px solid var(--text-bg-gold);
-    }
-    .event-item p { font-size: 0.95rem; line-height: 1.6; }
-
-    /* --- UI & Option 按钮 --- */
-    .ui-buttons {
-        position: fixed; top: 20px; right: 20px;
-        z-index: 1010; display: flex; gap: 10px;
-    }
-    .ui-button {
-        width: 48px; height: 48px; border-radius: 50%;
-        border: 1px solid var(--card-border-color);
-        background: var(--card-bg-color); color: var(--text-color);
-        font-size: 1.2rem; cursor: pointer; display: flex;
-        justify-content: center; align-items: center;
-        transition: all 0.3s ease;
-    }
-    .ui-button:hover { transform: scale(1.1); border-color: var(--emphasis-color); }
-    .options-container {
-        max-width: 800px; margin: 1rem auto 0 auto;
-        padding: 0 2.5rem 1.5rem 2.5rem; display: flex;
-        flex-direction: column; gap: 0.75rem;
-    }
-    .option-button {
-        display: block; width: 100%; padding: 0.8rem 1.2rem;
-        font-family: "Georgia", "Source Han Serif SC", "Songti SC", serif;
-        font-size: 1rem; text-align: left; color: var(--text-color);
-        background-color: rgba(255, 255, 255, 0.4);
-        border: 1px solid var(--card-border-color);
-        border-radius: 6px; cursor: pointer; transition: all 0.2s ease;
-    }
-    .option-button:hover {
-        border-color: var(--emphasis-color);
-        background-color: rgba(255, 255, 255, 0.7);
-    }
-
-    /* --- 响应式设计 --- */
-    @media (max-width: 768px) {
-        .main-view-bg { padding: 1rem; }
-        .content-prose { padding: 1.5rem 1rem; font-size: 1rem; }
-        .ui-buttons { top: 15px; right: 15px; }
-        .character-page {
-            display: flex;
-            flex-direction: column;
-            height: 100%; /* 确保flex容器占满视口高度 */
-        }
-        .character-sprite-container {
-            flex-shrink: 0; /* 防止立绘区域被压缩 */
-            width: 100%;
-            height: 45vh; /* 占据约一半屏幕高度 */
-            opacity: 1;
-            animation: none;
-        }
-        .character-sprite {
-            max-height: 100%;
-        }
-        .character-info-panel {
-            flex-grow: 1; /* 占据剩余空间 */
-            width: 100%;
-            border-left: none;
-            box-shadow: none;
-            transform: none;
-            animation: none; /* 移除所有动画，包括主题动画 */
-            display: flex; /* 使用flex布局来管理内部滚动 */
-            flex-direction: column;
-            overflow: hidden; /* 父级隐藏溢出 */
-        }
-        .character-info-panel .character-content {
-            overflow-y: auto; /* 只让内容区滚动 */
-            -webkit-overflow-scrolling: touch; /* 优化iOS滚动体验 */
-        }
-        /* 在移动端禁用主题动画，因为它们可能导致性能问题或布局错乱 */
-        .character-info-panel.theme-linyujing,
-        .character-info-panel.theme-chenyuhuan {
-            animation: none;
-        }
-        .snow-container {
-            display: none; /* 移动端隐藏雪花 */
-        }
-        .character-content { padding: 1.5rem; }
-        .character-name { font-size: 2.2rem; }
-        .options-container { padding: 0 1rem 1.5rem 1rem; }
-    }
-
-    /* --- 夜间模式 --- */
-    body.dark-mode {
-        --bg-main: var(--bg-main-dark);
-        --text-color: var(--text-color-dark);
-        --text-bg-gold: var(--text-bg-gold-dark);
-        --card-border-color: var(--card-border-color-dark);
-        --emphasis-color: var(--emphasis-color-dark);
-        --quote-color: var(--quote-color-dark);
-        --character-panel-bg: var(--character-panel-bg-dark);
-        --frame-color-inner: var(--frame-color-inner-dark);
-        --frame-color-outer: var(--frame-color-outer-dark);
-    }
-    body.dark-mode .stat-bar {
-        background-color: rgba(255,255,255,0.1);
-    }
-</style>
-</head>
-<body>
-
-<div class="game-container">
-    <!-- UI 按钮 -->
-    <div class="ui-buttons">
-        <button id="theme-toggle-btn" class="ui-button" title="切换模式">☀️</button>
-        <button id="char-page-btn" class="ui-button" title="角色信息">👤</button>
-        <button id="return-btn" class="ui-button" title="返回正文" style="display: none;">📖</button>
-    </div>
-
-    <!-- 主要故事视图 -->
-    <div id="main-view" class="view active">
-        <div class="main-view-bg">
-            <article class="content-prose">
-$1
-            </article>
-            <div id="options-container" class="options-container"></div>
-        </div>
-    </div>
-
-    <!-- 角色信息视图 -->
-    <div id="character-view" class="view">
-        <div id="character-page" class="character-page">
-            <div class="character-sprite-container">
-                <div id="sprite-loader" class="sprite-loader">加载中...</div>
-                <img id="character-sprite" class="character-sprite" src="" alt="Character Sprite">
-            </div>
-            <div class="character-info-panel">
-                <div id="character-tabs" class="character-tabs"></div>
-                <div class="character-content">
-                    <div id="character-card" class="character-card">
-                        <!-- 内容将由JS动态生成 -->
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- SVG 闪电模板 -->
-    <div id="svg-templates" style="display: none;">
-        <svg id="lightning-template-1" viewBox="0 0 100 200">
-            <path class="lightning-path-main" d="M 50 0 L 55 60 L 40 75 L 50 130 L 45 200" />
-            <path class="lightning-path-branch" d="M 55 60 L 80 90" />
-        </svg>
-        <svg id="lightning-template-2" viewBox="0 0 100 200">
-            <path class="lightning-path-main" d="M 50 0 L 45 70 L 60 85 L 50 150 L 55 200" />
-            <path class="lightning-path-branch" d="M 45 70 L 20 100" />
-            <path class="lightning-path-branch" d="M 50 150 L 70 170" />
-        </svg>
-    </div>
-</div>
-
-<script>
-'use strict';
-
-// --- DOM 元素获取 ---
-const mainView = document.getElementById('main-view');
-const characterView = document.getElementById('character-view');
-const charPageBtn = document.getElementById('char-page-btn');
-const returnBtn = document.getElementById('return-btn');
-const themeToggleBtn = document.getElementById('theme-toggle-btn');
-const characterPage = document.getElementById('character-page');
-const characterInfoPanel = document.querySelector('.character-info-panel');
-const charTabs = document.getElementById('character-tabs');
-const characterCard = document.getElementById('character-card');
-const characterSprite = document.getElementById('character-sprite');
-const spriteLoader = document.getElementById('sprite-loader');
-const articleElement = document.querySelector('.content-prose');
-const optionsContainer = document.getElementById('options-container');
-
-// --- 动态角色立绘配置 ---
-
-// 1. 将您创建的 character_images.json 文件上传到 GitHub 仓库。
-// 2. 在 GitHub 上打开这个文件，点击 "Raw" 按钮。
-// 3. 将浏览器地址栏中的链接（以 raw.githubusercontent.com 开头）复制到下面。
-// 4. 您也可以使用 jsDelivr CDN 来加速访问, 格式为: https://cdn.jsdelivr.net/gh/你的用户名/你的仓库名@分支名/文件路径/character_images.json
-const characterImagesUrl = 'https://raw.githubusercontent.com/Molilili001/image/refs/heads/main/character_images.json'; // <-- 您提供的 GitHub Raw URL
-
-let characterImageOverrides = {};
-
-async function fetchCharacterImages() {
-    try {
-        // 通过添加时间戳参数来“破坏”浏览器缓存，确保每次都获取最新文件
-        const urlWithCacheBust = `${characterImagesUrl}?t=${new Date().getTime()}`;
-        const response = await fetch(urlWithCacheBust);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        characterImageOverrides = await response.json();
-        console.log("角色立绘配置加载成功:", characterImageOverrides);
-
-    } catch (error) {
-        console.error("无法加载或解析角色立绘配置文件:", error);
-        
-        // 弹出明确的错误提示
-        alert(`错误：无法从GitHub加载最新的立绘配置文件。\n\n原因: ${error.message}\n\n请检查链接是否正确，以及JSON文件格式是否无误。页面将暂时使用内置的备用图片。`);
-
-        // 加载失败时使用备用数据，以免页面出错
-        characterImageOverrides = {
-            '洛千霜': 'https://cdn.jsdelivr.net/gh/Molilili001/image/test/4%E3%80%81%E5%88%86%E5%9D%97%E6%94%BE%E5%A4%A7_None_00004_.png',
-            '林语惊': 'https://cdn.jsdelivr.net/gh/Molilili001/image/test/4%E3%80%81%E5%88%86%E5%9D%97%E6%94%BE%E5%A4%A7_None_00003_.png',
-            '陈予欢': 'https://cdn.jsdelivr.net/gh/Molilili001/image/test/4%E3%80%81%E5%88%86%E5%9D%97%E6%94%BE%E5%A4%A7_None_00002_.png'
-        };
-        console.log("已加载备用立绘数据。");
-    }
-}
-
-
-// --- 核心功能函数 ---
-
-function switchView(viewToShow) {
-    mainView.classList.toggle('active', viewToShow === 'main');
-    characterView.classList.toggle('active', viewToShow === 'character');
-    charPageBtn.style.display = viewToShow === 'main' ? 'flex' : 'none';
-    returnBtn.style.display = viewToShow === 'character' ? 'flex' : 'none';
-}
-
-function animateValue(element, start, end, duration) {
-    let startTimestamp = null;
-    const step = (timestamp) => {
-        if (!startTimestamp) startTimestamp = timestamp;
-        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-        element.textContent = Math.floor(progress * (end - start) + start);
-        if (progress < 1) {
-            window.requestAnimationFrame(step);
-        }
-    };
-    window.requestAnimationFrame(step);
-}
-
-let lightningTimeoutId = null; // 用于控制闪电效果的定时器
-
-function createLightningBolt(container) {
-    if (!container) return;
-
-    // 随机选择一个SVG模板
-    const templateId = `lightning-template-${Math.ceil(Math.random() * 2)}`;
-    const template = document.getElementById(templateId);
-    if (!template) return;
-
-    // 克隆SVG元素
-    const svgClone = template.cloneNode(true);
-    svgClone.removeAttribute('id');
-    svgClone.classList.add('lightning-svg');
-
-    // 随机定位
-    const panelRect = container.getBoundingClientRect();
-    const x = Math.random() * (panelRect.width - 150); // 减去SVG宽度
-    const y = Math.random() * (panelRect.height - 200); // 减去SVG高度
-    svgClone.style.left = `${x}px`;
-    svgClone.style.top = `${y}px`;
-    
-    container.appendChild(svgClone);
-    
-    // 触发动画
-    requestAnimationFrame(() => {
-        svgClone.classList.add('flash');
-    });
-
-    // 动画结束后移除
-    setTimeout(() => {
-        if (svgClone.parentElement) {
-            svgClone.remove();
-        }
-    }, 600); // 必须大于等于动画时长
-}
-
-async function renderCharacterSheet(characterName) {
-    // --- 角色主题化 ---
-    const themeMap = {
-        '洛千霜': 'theme-luoqianshuang',
-        '林语惊': 'theme-linyujing',
-        '陈予欢': 'theme-chenyuhuan'
-    };
-    
-    // 1. 清理旧主题和动态元素
-    characterInfoPanel.className = 'character-info-panel'; // 重置所有类
-    const oldSnow = document.querySelector('.snow-container');
-    if (oldSnow) oldSnow.remove();
-    
-    if (lightningTimeoutId) {
-        clearTimeout(lightningTimeoutId);
-        lightningTimeoutId = null;
-    }
-    const oldLightningContainer = characterInfoPanel.querySelector('.lightning-container');
-    if (oldLightningContainer) oldLightningContainer.remove();
-
-    // 2. 应用新主题
-    if (themeMap[characterName]) {
-        characterInfoPanel.classList.add(themeMap[characterName]);
-        
-        // 3. 根据角色应用特定动态效果
-        if (characterName === '洛千霜') {
-            const snowContainer = document.createElement('div');
-            snowContainer.className = 'snow-container';
-            for (let i = 0; i < 40; i++) {
-                const snowflake = document.createElement('div');
-                snowflake.className = 'snowflake';
-                const size = Math.random() * 3.5 + 1 + 'px';
-                snowflake.style.width = size;
-                snowflake.style.height = size;
-                snowflake.style.left = Math.random() * 100 + '%';
-                snowflake.style.animationDuration = (Math.random() * 7 + 8) + 's';
-                snowflake.style.animationDelay = Math.random() * 10 + 's';
-                snowflake.style.opacity = Math.random() * 0.8 + 0.1;
-                snowContainer.appendChild(snowflake);
-            }
-            characterPage.appendChild(snowContainer);
-        } else if (characterName === '林语惊') {
-            const container = document.createElement('div');
-            container.className = 'lightning-container';
-            characterInfoPanel.appendChild(container);
-            
-            function flashLoop() {
-                createLightningBolt(container);
-                const randomDelay = Math.random() * 2000 + 500; // 0.5s to 2.5s
-                lightningTimeoutId = setTimeout(flashLoop, randomDelay);
-            }
-            flashLoop();
-        }
-    }
-
-    let statData;
-    try {
-        const messages = await getChatMessages(getCurrentMessageId());
-        if (!messages || messages.length === 0 || !messages[0].data || !messages[0].data.stat_data) {
-            throw new Error("stat_data not found in message object.");
-        }
-        statData = messages[0].data.stat_data;
-    } catch (e) {
-        console.error("Failed to get stat_data:", e);
-        characterCard.innerHTML = `<h2 class="character-name">错误</h2><p>获取角色数据失败: ${e.message}</p>`;
-        return;
-    }
-
-    if (!statData[characterName]) {
-        characterCard.innerHTML = `<h2 class="character-name">错误</h2><p>在数据中找不到角色: ${characterName}</p>`;
-        return;
-    }
-
-    const charData = statData[characterName];
-    let imageUrlSource = characterImageOverrides[characterName] || (charData['图片'] && Array.isArray(charData['图片']) && charData['图片'][0] ? charData['图片'][0] : '');
-    let imageUrl;
-
-    // --- 新增：随机立绘逻辑 ---
-    // 如果imageUrlSource是一个数组，则从中随机选择一个
-    if (Array.isArray(imageUrlSource)) {
-        imageUrl = imageUrlSource[Math.floor(Math.random() * imageUrlSource.length)];
-    } else {
-        imageUrl = imageUrlSource;
-    }
-    // --- 结束 ---
-
-    // --- 更新立绘（带预加载）---
-    if (characterSprite.src !== imageUrl && imageUrl) {
-        characterSprite.style.opacity = 0;
-        spriteLoader.textContent = '加载中...';
-        spriteLoader.style.display = 'block';
-
-        const preloader = new Image();
-        preloader.onload = () => {
-            characterSprite.src = imageUrl;
-            characterSprite.alt = `${characterName} Sprite`;
-            spriteLoader.style.display = 'none';
-            characterSprite.style.opacity = 1;
-        };
-        preloader.onerror = () => {
-            console.error(`立绘加载失败: ${imageUrl}`);
-            spriteLoader.textContent = '立绘加载失败';
-            // 可以在这里设置一个默认的错误图片
-            // characterSprite.src = 'path/to/error.png';
-            // characterSprite.style.opacity = 1;
-        };
-        preloader.src = imageUrl;
-
-    } else if (!imageUrl) {
-         // 如果没有图片URL，则隐藏图片和加载提示
-        characterSprite.style.opacity = 0;
-        spriteLoader.style.display = 'none';
-    }
-
-    characterCard.innerHTML = ''; // 清空旧内容
-
-    const nameEl = document.createElement('h2');
-    nameEl.className = 'character-name';
-    nameEl.textContent = characterName;
-    characterCard.appendChild(nameEl);
-
-    for (const key in charData) {
-        if (!Object.hasOwnProperty.call(charData, key) || key === '图片' || key === '在场状态') continue;
-
-        const value = charData[key][0];
-        const description = charData[key][1] || "";
-
-        if (typeof value === 'number') {
-            const statsGrid = document.createElement('div');
-            statsGrid.className = 'stats-grid property';
-            statsGrid.dataset.type = key;
-            statsGrid.dataset.char = characterName;
-
-            const label = document.createElement('span');
-            label.className = 'stat-label';
-            label.textContent = key;
-
-            const barContainer = document.createElement('div');
-            barContainer.className = 'stat-bar';
-            const barInner = document.createElement('div');
-            barInner.className = 'stat-bar-inner';
-            
-            barContainer.appendChild(barInner);
-
-            const valueEl = document.createElement('span');
-            valueEl.className = 'stat-value';
-
-            statsGrid.appendChild(label);
-            statsGrid.appendChild(barContainer);
-            statsGrid.appendChild(valueEl);
-            characterCard.appendChild(statsGrid);
-
-            let percentage = value;
-            if (description.includes("[-100, 100]")) {
-                percentage = ((value + 100) / 200) * 100;
-            }
-            percentage = Math.max(0, Math.min(100, percentage));
-
-            setTimeout(() => { barInner.style.width = `${percentage}%`; }, 100);
-            animateValue(valueEl, 0, value, 800);
-
-        } else if (Array.isArray(value) && key === '重要事件') {
-             if (value.length > 1) { // 确保有事件可显示
-                const timeline = document.createElement('ul');
-                timeline.className = 'events-timeline';
-                
-                const title = document.createElement('h3');
-                title.style.marginTop = '2rem'; // 与上方内容分隔
-                title.textContent = key;
-                characterCard.appendChild(title);
-
-                for (let i = 1; i < value.length; i++) { // 从索引1开始，跳过元数据
-                    if(value[i] === '$__META_EXTENSIBLE__$') continue; // 跳过占位符
-                    const li = document.createElement('li');
-                    li.className = 'event-item';
-                    const p = document.createElement('p');
-                    p.textContent = value[i];
-                    li.appendChild(p);
-                    timeline.appendChild(li);
-                }
-                characterCard.appendChild(timeline);
-            }
-        } else if (Array.isArray(value) && value.length > 1) { // 处理其他数组类型数据（如果未来有的话）
-            const timeline = document.createElement('ul');
-            timeline.className = 'events-timeline';
-            
-            const title = document.createElement('h3');
-            title.textContent = key;
-            timeline.appendChild(title);
-
-            for (let i = 1; i < value.length; i++) {
-                const li = document.createElement('li');
-                li.className = 'event-item';
-                const p = document.createElement('p');
-                p.textContent = value[i];
-                li.appendChild(p);
-                timeline.appendChild(li);
-            }
-            characterCard.appendChild(timeline);
-        }
-    }
-
-    document.querySelectorAll('.tab-button').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.char === characterName);
-    });
-}
-
-async function initializeCharacterPage() {
-    let statData;
-    try {
-        const messages = await getChatMessages(getCurrentMessageId());
-        if (!messages || messages.length === 0 || !messages[0].data || !messages[0].data.stat_data) {
-            throw new Error("stat_data not found in message object.");
-        }
-        statData = messages[0].data.stat_data;
-    } catch (e) {
-        console.error("Failed to initialize character page:", e);
-        characterCard.innerHTML = `<h2 class="character-name">错误</h2><p>初始化失败: ${e.message}</p>`;
-        return;
-    }
-
-    charTabs.innerHTML = '';
-    const characters = Object.keys(statData).filter(key => key !== '世界' && statData[key]['在场状态'] && statData[key]['在场状态'][0]);
-
-    characters.forEach(name => {
-        const button = document.createElement('button');
-        button.className = 'tab-button';
-        button.dataset.char = name;
-        button.textContent = name;
-        button.addEventListener('click', () => renderCharacterSheet(name));
-        charTabs.appendChild(button);
-    });
-
-    if (characters.length > 0) {
-        await renderCharacterSheet(characters[0]);
-    } else {
-        characterCard.innerHTML = `<h2 class="character-name">无角色</h2><p>当前没有在场的角色。</p>`;
-    }
-}
-
-async function sendToSillyTavern(text) {
-    const slashCommand = `/send ${text}\n|\n/trigger`;
-    try {
-        if (typeof triggerSlash === 'function') {
-            await triggerSlash(slashCommand, 'Send');
-        } else {
-            console.log("SillyTavern函数 'triggerSlash' 未找到。");
-            navigator.clipboard.writeText(slashCommand).then(() => {
-                alert('SillyTavern连接失败！指令已复制到剪贴板，请手动粘贴发送。');
-            }).catch(err => {
-                alert('复制到剪贴板失败，请手动复制选项内容。');
-                console.error('复制失败:', err);
-            });
-        }
-    } catch (error) {
-        console.error('与SillyTavern交互时发生错误:', error);
-        alert('与SillyTavern交互时发生错误，详情请查看浏览器控制台。');
-    }
-}
-
-function parseAndCreateOptions() {
-    if (!articleElement || !optionsContainer) return;
-    
-    let content = articleElement.innerHTML;
-
-    const optionRegex = /<option>(.*?)<\/option>/g;
-    const detailsRegex = /<details>[\s\S]*?<\/details>/g;
-    const updateVarRegex = /<UpdateVariable>[\s\S]*?<\/UpdateVariable>/g;
-
-    const optionMatches = Array.from(content.matchAll(optionRegex));
-
-    content = content.replace(optionRegex, '')
-                     .replace(detailsRegex, '')
-                     .replace(updateVarRegex, '')
-                     .trim();
-    
-    articleElement.innerHTML = content;
-
-    optionsContainer.innerHTML = '';
-    if (optionMatches.length > 0) {
-        optionsContainer.style.display = 'flex';
-        optionMatches.forEach(match => {
-            const optionText = match[1].trim();
-            const button = document.createElement('button');
-            button.className = 'option-button';
-            button.innerHTML = optionText;
-            button.addEventListener('click', () => sendToSillyTavern(optionText));
-            optionsContainer.appendChild(button);
-        });
-    } else {
-        optionsContainer.style.display = 'none';
-    }
-}
-
-function highlightQuotes() {
-    if (!articleElement) return;
-    if(articleElement.innerHTML.includes('class="dialogue-quote"')) return;
-    
-    const quoteRegex = /(["“])(.+?)(["”])/g;
-    const replacement = '<span class="dialogue-quote">$&</span>';
-    articleElement.innerHTML = articleElement.innerHTML.replace(quoteRegex, replacement);
-}
-
-// --- 主题切换逻辑 ---
-const THEME_STORAGE_KEY = 'galgame_theme';
-
-function applyTheme(theme) {
-    if (theme === 'dark') {
-        document.body.classList.add('dark-mode');
-        themeToggleBtn.textContent = '☀️';
-    } else {
-        document.body.classList.remove('dark-mode');
-        themeToggleBtn.textContent = '🌙';
-    }
-}
-
-function toggleTheme() {
-    const isDark = document.body.classList.contains('dark-mode');
-    const newTheme = isDark ? 'light' : 'dark';
-    applyTheme(newTheme);
-    localStorage.setItem(THEME_STORAGE_KEY, newTheme);
-}
-
-// --- 初始化与事件监听 ---
-document.addEventListener('DOMContentLoaded', async () => {
-    let isCharPageInitialized = false;
-
-    // 1. 基础UI交互
-    highlightQuotes();
-    parseAndCreateOptions();
-    returnBtn.addEventListener('click', () => switchView('main'));
-    themeToggleBtn.addEventListener('click', toggleTheme);
-
-    // 2. 角色页面按钮点击事件
-    charPageBtn.addEventListener('click', async () => {
-        // 每次打开角色页面时，都重新获取最新的立绘配置
-        await fetchCharacterImages();
-
-        if (typeof getChatMessages !== 'function' || typeof getCurrentMessageId !== 'function') {
-            console.error("错误：未在 SillyTavern 环境中。");
-            characterCard.innerHTML = `<h2 class="character-name">环境错误</h2><p>无法找到 SillyTavern 的 getChatMessages 或 getCurrentMessageId 函数。</p>`;
-        } else {
-            try {
-                if (!isCharPageInitialized) {
-                    await initializeCharacterPage();
-                    isCharPageInitialized = true;
-                } else {
-                    const activeTab = document.querySelector('.tab-button.active');
-                    if (activeTab) {
-                        await renderCharacterSheet(activeTab.dataset.char);
-                    } else {
-                        await initializeCharacterPage();
-                    }
-                }
-            } catch (e) {
-                 console.error("点击角色按钮时出错:", e);
-                 characterCard.innerHTML = `<h2 class="character-name">运行时错误</h2><p>${e.message}</p>`;
-            }
-        }
-        switchView('character');
-    });
-
-    // 3. 加载并应用保存的主题
-    const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) || 'light';
-    applyTheme(savedTheme);
-});
-
-</script>
-</body>
-</html>
+   <!DOCTYPE html>
+   <html lang="zh-CN">
+   <head>
+       <meta charset="UTF-8">
+       <meta name="viewport" content="width=device-width, initial-scale=1.0">
+       <title>Galgame 交互界面</title>
+   <style>
+       /* --- 字体引入 --- */
+       /* 步骤1: 在这里引入您想使用的网络字体。
+          您可以从 Google Fonts (https://fonts.google.com/) 或其他免费字体网站找到 @import 链接。
+          下面是一个示例，引入了“马善政”字体。*/
+       @import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap');
+   
+       /* --- 全局与基础设置 --- */
+       :root {
+           /* --- 日间模式 --- */
+           --bg-main: #f0e8f8;
+           --bg-spot: rgba(220, 200, 240, 0.6);
+           --text-color: #3e3a44;
+           --text-bg-gold: rgba(253, 245, 230, 0.9);
+           --card-border-color: #d8c8e8;
+           --emphasis-color: #8a4fff;
+           --quote-color: #6a5acd;
+           --character-panel-bg: rgba(255, 255, 255, 0.15);
+           --character-panel-shadow: rgba(0,0,0,0.2);
+           --timeline-dot-bg: #a080c0;
+           --timeline-line-bg: #d8c8e8;
+           --frame-color-inner: white;
+           --frame-color-outer: #d8c8e8;
+   
+           /* --- 夜间模式 --- */
+           --bg-main-dark: #1a202c;
+           --text-color-dark: #c8d3e0;
+           --text-bg-gold-dark: rgba(45, 55, 72, 0.9);
+           --card-border-color-dark: #4a5568;
+           --emphasis-color-dark: #90cdf4;
+           --quote-color-dark: #89b8ff;
+           --character-panel-bg-dark: rgba(26, 32, 44, 0.2);
+           --frame-color-inner-dark: #4a5568;
+           --frame-color-outer-dark: #1a202c;
+       }
+   
+       * { margin: 0; padding: 0; box-sizing: border-box; }
+   
+       body {
+           font-family: "Georgia", "Source Han Serif SC", "Songti SC", serif;
+           background-color: var(--bg-main);
+           color: var(--text-color);
+           transition: background-color 0.5s ease, color 0.5s ease;
+           overflow: hidden;
+           padding: 15px;
+           box-sizing: border-box;
+       }
+       body::before {
+           content: '';
+           position: fixed;
+           top: 0; left: 0; right: 0; bottom: 0;
+           border: 5px solid var(--frame-color-inner);
+           outline: 10px solid var(--frame-color-outer);
+           z-index: 9999;
+           pointer-events: none;
+           transition: all 0.5s ease;
+       }
+   
+       .game-container {
+           display: flex;
+           width: 100%;
+           height: 100%;
+       }
+       
+       /* --- 视图切换 --- */
+       .view {
+           display: none;
+           width: 100%;
+           height: 100%;
+           animation: fadeIn 0.5s ease-in-out;
+       }
+       .view.active { display: block; }
+       @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+   
+       /* --- 正文视图 --- */
+       .main-view-bg {
+           min-height: 100vh;
+           padding: 2rem;
+           background:
+               radial-gradient(circle at 15% 20%, var(--bg-spot), transparent 40%),
+               radial-gradient(circle at 45% 50%, var(--bg-spot), transparent 50%),
+               radial-gradient(circle at 80% 75%, var(--bg-spot), transparent 45%);
+           background-size: 100% 100%;
+           background-attachment: fixed;
+       }
+       .content-prose {
+           max-width: 800px;
+           margin: 0 auto;
+           padding: 2rem 2.5rem;
+           font-size: 1.1rem;
+           line-height: 1.8;
+           white-space: pre-wrap;
+           text-align: justify;
+           background-color: var(--text-bg-gold);
+           border-radius: 12px;
+           border: 1px solid var(--card-border-color);
+           backdrop-filter: blur(8px);
+           -webkit-backdrop-filter: blur(8px);
+           box-shadow: 0 6px 25px rgba(0,0,0,0.08);
+           position: relative;
+           text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+           opacity: 0;
+           animation: content-enter 0.8s 0.2s ease-out forwards;
+       }
+       @keyframes content-enter {
+           from { opacity: 0; transform: translateY(20px); }
+           to { opacity: 1; transform: translateY(0); }
+       }
+       .content-prose::before,
+       .content-prose::after {
+           content: '';
+           position: absolute;
+           width: 25px;
+           height: 25px;
+           border-color: var(--emphasis-color);
+           border-style: solid;
+           opacity: 0.6;
+           transition: all 0.3s ease;
+       }
+       .content-prose::before {
+           top: -5px;
+           left: -5px;
+           border-width: 2px 0 0 2px;
+           border-top-left-radius: 12px;
+       }
+       .content-prose::after {
+           bottom: -5px;
+           right: -5px;
+           border-width: 0 2px 2px 0;
+           border-bottom-right-radius: 12px;
+       }
+       .content-prose:hover::before,
+       .content-prose:hover::after {
+           opacity: 1;
+           transform: scale(1.1);
+       }
+       .content-prose em { color: var(--emphasis-color); font-style: italic; }
+       .content-prose .dialogue-quote { color: var(--quote-color); font-weight: 500; }
+   
+       /* --- 角色页面 --- */
+       .character-page {
+           display: grid;
+           grid-template-columns: 1fr 480px; /* 左侧立绘区域，右侧信息面板 */
+           height: 100%;
+           width: 100%;
+           position: relative;
+           overflow: hidden;
+           background: var(--bg-main); /* 添加一个基础背景色 */
+       }
+   
+       .character-sprite-container {
+           width: 100%;
+           height: 100%;
+           display: flex;
+           justify-content: center;
+           align-items: flex-end; /* 角色贴底 */
+           position: relative;
+           opacity: 0;
+           animation: sprite-fade-in 0.8s 0.2s ease-out forwards;
+       }
+   
+       @keyframes sprite-fade-in {
+           from { opacity: 0; transform: translateX(-30px); }
+           to { opacity: 1; transform: translateX(0); }
+       }
+   
+       .character-sprite {
+           max-width: 100%;
+           max-height: 95%;
+           object-fit: contain; /* 保持立绘比例 */
+           transition: opacity 0.5s ease-in-out;
+       }
+   
+       .sprite-loader {
+           position: absolute;
+           top: 50%;
+           left: 50%;
+           transform: translate(-50%, -50%);
+           color: var(--text-color);
+           font-size: 1.5rem;
+           font-weight: bold;
+           display: none; /* Initially hidden */
+           z-index: 10;
+           text-shadow: 0 0 5px white;
+       }
+   
+       .character-info-panel {
+           height: 100%;
+           display: flex;
+           flex-direction: column;
+           background: var(--text-bg-gold);
+           border-left: 2px solid var(--card-border-color);
+           box-shadow: -5px 0 25px rgba(0,0,0,0.1);
+           transform: translateX(100%);
+           animation: panel-slide-in 0.6s forwards cubic-bezier(0.25, 1, 0.5, 1);
+           position: relative; /* 为伪元素定位 */
+           overflow: hidden; /* 隐藏超出部分的动画 */
+       }
+   
+       /* --- 动态边框与主题动画 --- */
+       @keyframes snow-fall {
+           0% { transform: translateY(0); opacity: 1; }
+           100% { transform: translateY(100vh); opacity: 0; }
+       }
+       @keyframes lightning-flicker {
+           0%   { box-shadow: 0 0 5px #9b59b6, 0 0 10px #9b59b6, inset 0 0 5px #d3a7e6; }
+           50%  { box-shadow: 0 0 20px #9b59b6, 0 0 35px #d3a7e6, inset 0 0 15px #9b59b6; }
+           100% { box-shadow: 0 0 5px #9b59b6, 0 0 10px #9b59b6, inset 0 0 5px #d3a7e6; }
+       }
+       @keyframes fire-flicker {
+           0% { background-position: 0% 50%; }
+           25% { background-position: 100% 50%; }
+           50% { background-position: 50% 0%; }
+           75% { background-position: 50% 100%; }
+           100% { background-position: 0% 50%; }
+       }
+   
+       /* --- 角色主题化 --- */
+       .snow-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden; z-index: 2; }
+       .snowflake { position: absolute; top: -20px; background: #3498db; border-radius: 50%; animation: snow-fall 10s linear infinite; }
+   
+       .character-info-panel.theme-luoqianshuang { --emphasis-color: #3498db; }
+   
+       .character-info-panel.theme-linyujing {
+           --emphasis-color: #9b59b6;
+       }
+   
+       .character-info-panel.theme-chenyuhuan {
+           --emphasis-color: #e74c3c;
+       }
+       .character-info-panel.theme-chenyuhuan::before {
+           content: '';
+           position: absolute;
+           top: 0; left: 0; right: 0; bottom: 0;
+           background:
+               radial-gradient(circle at 20% 20%, rgba(255, 165, 0, 0.5), transparent 40%),
+               radial-gradient(circle at 80% 70%, rgba(231, 76, 60, 0.6), transparent 50%),
+               radial-gradient(circle at 50% 50%, rgba(255, 215, 0, 0.4), transparent 60%);
+           background-size: 200% 200%;
+           animation: fire-flicker 5s ease-in-out infinite;
+           filter: blur(5px);
+           opacity: 0.8;
+           pointer-events: none;
+           z-index: 0;
+       }
+   
+       /* --- 新增：SVG 闪电效果 --- */
+       .lightning-container {
+           position: absolute;
+           top: 0; left: 0; right: 0; bottom: 0;
+           pointer-events: none;
+           overflow: hidden;
+           z-index: 3;
+       }
+       .lightning-svg {
+           position: absolute;
+           width: 150px; /* 定义SVG视口大小 */
+           height: 200px;
+           opacity: 0;
+           filter: drop-shadow(0 0 3px white) drop-shadow(0 0 8px var(--emphasis-color));
+       }
+       .lightning-svg.flash {
+           animation: svg-lightning-flash 0.6s ease-out;
+       }
+       .lightning-svg path {
+           stroke: white;
+           stroke-width: 2;
+           stroke-linecap: round;
+           fill: none;
+           stroke-dasharray: 500; /* 一个足够大的值 */
+           stroke-dashoffset: 500; /* 初始时完全隐藏 */
+       }
+       .flash .lightning-path-main {
+           animation: draw-lightning 0.3s ease-in forwards;
+       }
+       .flash .lightning-path-branch {
+           animation: draw-lightning 0.2s 0.1s ease-in forwards; /* 延迟出现 */
+       }
+   
+       @keyframes svg-lightning-flash {
+           0% { opacity: 0; }
+           10% { opacity: 1; }
+           80% { opacity: 1; }
+           100% { opacity: 0; }
+       }
+       @keyframes draw-lightning {
+           to {
+               stroke-dashoffset: 0;
+           }
+       }
+       
+       @keyframes panel-slide-in {
+           to { transform: translateX(0); }
+       }
+   
+       .character-tabs {
+           flex-shrink: 0;
+           display: flex;
+           justify-content: center;
+           padding: 0.5rem;
+           background: rgba(0,0,0,0.05);
+           border-bottom: 1px solid var(--card-border-color);
+       }
+   
+       .tab-button {
+           padding: 0.6rem 1.2rem;
+           margin: 0 0.3rem;
+           border: none;
+           background: transparent;
+           color: var(--text-color);
+           font-size: 1rem;
+           font-weight: bold;
+           cursor: pointer;
+           border-radius: 6px;
+           position: relative;
+           transition: all 0.3s ease;
+       }
+       .tab-button::after {
+           content: '';
+           position: absolute;
+           bottom: 0;
+           left: 50%;
+           transform: translateX(-50%);
+           width: 0;
+           height: 3px;
+           background-color: var(--emphasis-color);
+           transition: width 0.3s ease;
+       }
+   
+       .tab-button.active, .tab-button:hover {
+           color: var(--emphasis-color);
+       }
+       .tab-button.active::after {
+           width: 80%;
+       }
+   
+       .character-content {
+           flex-grow: 1;
+           overflow-y: auto; /* 让内容区可以滚动 */
+           padding: 2rem;
+       }
+   
+       .character-card {
+           background: transparent; /* 卡片本身透明，由父级面板提供背景 */
+           color: var(--text-color);
+           width: 100%;
+           max-width: none;
+           padding: 0;
+           border: none;
+           box-shadow: none;
+           border-radius: 0;
+           max-height: none;
+           opacity: 0;
+           animation: card-content-fade-in 0.5s 0.4s forwards;
+       }
+   
+       @keyframes card-content-fade-in {
+           to { opacity: 1; }
+       }
+   
+       .character-name {
+           font-size: 2.8rem;
+           font-weight: bold;
+           /* 步骤2: 在这里使用您引入的字体名称。
+              将您选择的字体名放在最前面。如果字体名包含空格，请用引号括起来。
+              后面的 "Source Han Serif SC" 等是备用字体，如果网络字体加载失败，浏览器会依次尝试它们。
+              您也可以直接使用电脑上已安装的字体，例如 "楷体", "微软雅黑" 等。*/
+           font-family: "Ma Shan Zheng", "Source Han Serif SC", "Songti SC", serif;
+           color: var(--emphasis-color);
+           margin-bottom: 2rem;
+           text-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+       }
+       .stats-grid {
+           display: grid; grid-template-columns: auto 1fr auto;
+           gap: 0.5rem 1rem; align-items: center; margin: 1.5rem 0;
+       }
+       .stat-label { font-weight: bold; font-size: 0.9rem; }
+       .stat-bar {
+           width: 100%; background-color: rgba(0,0,0,0.1);
+           border-radius: 5px; overflow: hidden; height: 18px;
+           border: 1px solid var(--card-border-color);
+       }
+       .stat-bar-inner {
+           height: 100%; border-radius: 5px;
+           transition: width 1s cubic-bezier(0.25, 1, 0.5, 1);
+           width: 0%;
+       }
+       .property[data-char="洛千霜"][data-type="好感度"] .stat-bar-inner { background: linear-gradient(90deg, #a0e7ff, #009dff); }
+       .property[data-char="洛千霜"][data-type="了解度"] .stat-bar-inner { background: linear-gradient(90deg, #a7ffeb, #00bfa5); }
+       .property[data-char="林语惊"][data-type="好感度"] .stat-bar-inner { background: linear-gradient(90deg, #e1caff, #a259ff); }
+       .property[data-char="林语惊"][data-type="了解度"] .stat-bar-inner { background: linear-gradient(90deg, #e0e0e0, #9e9e9e); }
+       .property[data-char="陈予欢"][data-type="好感度"] .stat-bar-inner { background: linear-gradient(90deg, #ffd700, #ff4500); }
+       .property[data-char="陈予欢"][data-type="了解度"] .stat-bar-inner { background: linear-gradient(90deg, #ffcc80, #ff9800); }
+       .stat-value {
+           font-size: 1.2rem; font-weight: bold;
+           min-width: 40px; text-align: right;
+       }
+       .events-timeline {
+           list-style: none; padding-left: 1rem;
+           border-left: 2px solid var(--timeline-line-bg);
+           margin-top: 1.5rem;
+           color: var(--text-color);
+           max-height: 250px; /* 限制最大高度 */
+           overflow-y: auto;  /* 超出高度则显示滚动条 */
+           padding-right: 10px; /* 为滚动条留出空间 */
+       }
+       .event-item { position: relative; padding-bottom: 1.5rem; }
+       .event-item:last-child { padding-bottom: 0; }
+       .event-item::before {
+           content: ''; position: absolute; left: -1.5rem; top: 5px;
+           width: 12px; height: 12px; border-radius: 50%;
+           background-color: var(--timeline-dot-bg);
+           border: 2px solid var(--text-bg-gold);
+       }
+       .event-item p { font-size: 0.95rem; line-height: 1.6; }
+   
+       /* --- UI & Option 按钮 --- */
+       .ui-buttons {
+           position: fixed; top: 20px; right: 20px;
+           z-index: 1010; display: flex; gap: 10px;
+       }
+       .ui-button {
+           width: 48px; height: 48px; border-radius: 50%;
+           border: 1px solid var(--card-border-color);
+           background: var(--text-bg-gold); color: var(--text-color);
+           font-size: 1.2rem; cursor: pointer; display: flex;
+           justify-content: center; align-items: center;
+           transition: all 0.3s ease;
+       }
+       .ui-button:hover { transform: scale(1.1); border-color: var(--emphasis-color); }
+       .options-container {
+           max-width: 800px; margin: 1rem auto 0 auto;
+           padding: 0 2.5rem 1.5rem 2.5rem; display: flex;
+           flex-direction: column; gap: 0.75rem;
+       }
+       .option-button {
+           display: block; width: 100%; padding: 0.8rem 1.2rem;
+           font-family: "Georgia", "Source Han Serif SC", "Songti SC", serif;
+           font-size: 1rem; text-align: left; color: var(--text-color);
+           background-color: rgba(255, 255, 255, 0.4);
+           border: 1px solid var(--card-border-color);
+           border-radius: 6px; cursor: pointer; transition: all 0.2s ease;
+       }
+       .option-button:hover {
+           border-color: var(--emphasis-color);
+           background-color: rgba(255, 255, 255, 0.7);
+       }
+   
+       /* --- 响应式设计 --- */
+       @media (max-width: 768px) {
+           .main-view-bg { padding: 1rem; }
+           .content-prose { padding: 1.5rem 1rem; font-size: 1rem; }
+           .ui-buttons { top: 15px; right: 15px; }
+           .character-page {
+               display: flex;
+               flex-direction: column;
+               height: 100%; /* 确保flex容器占满视口高度 */
+           }
+           .character-sprite-container {
+               flex-shrink: 0; /* 防止立绘区域被压缩 */
+               width: 100%;
+               height: 45vh; /* 占据约一半屏幕高度 */
+               opacity: 1;
+               animation: none;
+           }
+           .character-sprite {
+               max-height: 100%;
+           }
+           .character-info-panel {
+               flex-grow: 1; /* 占据剩余空间 */
+               width: 100%;
+               border-left: none;
+               box-shadow: none;
+               transform: none;
+               animation: none; /* 移除所有动画，包括主题动画 */
+               display: flex; /* 使用flex布局来管理内部滚动 */
+               flex-direction: column;
+               overflow: hidden; /* 父级隐藏溢出 */
+           }
+           .character-info-panel .character-content {
+               overflow-y: auto; /* 只让内容区滚动 */
+               -webkit-overflow-scrolling: touch; /* 优化iOS滚动体验 */
+           }
+           /* 在移动端禁用主题动画，因为它们可能导致性能问题或布局错乱 */
+           .character-info-panel.theme-linyujing,
+           .character-info-panel.theme-chenyuhuan {
+               animation: none;
+           }
+           .snow-container {
+               display: none; /* 移动端隐藏雪花 */
+           }
+           .character-content { padding: 1.5rem; }
+           .character-name { font-size: 2.2rem; }
+           .options-container { padding: 0 1rem 1.5rem 1rem; }
+       }
+   
+       /* --- 夜间模式 --- */
+       body.dark-mode {
+           --bg-main: var(--bg-main-dark);
+           --text-color: var(--text-color-dark);
+           --text-bg-gold: var(--text-bg-gold-dark);
+           --card-border-color: var(--card-border-color-dark);
+           --emphasis-color: var(--emphasis-color-dark);
+           --quote-color: var(--quote-color-dark);
+           --character-panel-bg: var(--character-panel-bg-dark);
+           --frame-color-inner: var(--frame-color-inner-dark);
+           --frame-color-outer: var(--frame-color-outer-dark);
+       }
+       body.dark-mode .stat-bar {
+           background-color: rgba(255,255,255,0.1);
+       }
+   
+       /* --- 新增：CG画廊样式 --- */
+       .cg-gallery-view {
+           padding: 2rem;
+           overflow-y: auto;
+           height: 100%;
+           background: var(--bg-main);
+       }
+       .cg-grid {
+           display: grid;
+           grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+           gap: 1rem;
+       }
+       .cg-item {
+           border-radius: 8px;
+           overflow: hidden;
+           cursor: pointer;
+           transition: transform 0.3s ease, box-shadow 0.3s ease;
+           border: 2px solid var(--card-border-color);
+           position: relative; /* 为锁定图标定位 */
+       }
+       .cg-item.locked {
+           cursor: default;
+       }
+       .cg-item.locked::after {
+           content: '🔒';
+           position: absolute;
+           top: 50%;
+           left: 50%;
+           transform: translate(-50%, -50%);
+           font-size: 2.5rem;
+           color: white;
+           text-shadow: 0 0 8px black;
+           opacity: 0.8;
+           z-index: 1;
+       }
+       .cg-item.locked .cg-thumbnail {
+           filter: brightness(0.4) grayscale(0.6) blur(8px);
+       }
+       .cg-item:not(.locked):hover {
+           transform: scale(1.05);
+           box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+       }
+       .cg-thumbnail {
+           width: 100%;
+           height: 100%;
+           object-fit: cover;
+           display: block;
+       }
+   
+       /* --- 新增：翻页样式 --- */
+       .pagination-container {
+           display: flex;
+           justify-content: center;
+           align-items: center;
+           margin-top: 2rem;
+           gap: 0.5rem;
+           padding-bottom: 1rem;
+       }
+       .page-btn {
+           padding: 0.5rem 1rem;
+           border: 1px solid var(--card-border-color);
+           background: transparent;
+           color: var(--text-color);
+           cursor: pointer;
+           border-radius: 4px;
+           transition: all 0.2s ease;
+       }
+       .page-btn:hover, .page-btn.active {
+           background-color: var(--emphasis-color);
+           color: white;
+           border-color: var(--emphasis-color);
+       }
+       .page-btn:disabled {
+           cursor: not-allowed;
+           opacity: 0.5;
+       }
+   
+       /* --- 新增：图片模态框样式 --- */
+       .image-modal {
+           display: none;
+           position: fixed;
+           z-index: 1050;
+           left: 0; top: 0;
+           width: 100%; height: 100%;
+           background-color: rgba(0,0,0,0.85);
+           justify-content: center;
+           align-items: center;
+           animation: fadeIn 0.3s;
+       }
+       .image-modal.visible {
+           display: flex;
+       }
+       .modal-content {
+           max-width: 90%;
+           max-height: 90%;
+           object-fit: contain;
+       }
+       .modal-close-btn {
+           position: absolute;
+           top: 25px; right: 45px;
+           color: #fff;
+           font-size: 40px;
+           font-weight: bold;
+           cursor: pointer;
+           transition: color 0.3s;
+       }
+       .modal-close-btn:hover {
+           color: #bbb;
+       }
+   </style>
+   </head>
+   <body>
+   
+   <div class="game-container">
+       <!-- UI 按钮 -->
+       <div class="ui-buttons">
+           <button id="theme-toggle-btn" class="ui-button" title="切换模式">☀️</button>
+           <button id="char-page-btn" class="ui-button" title="角色信息">👤</button>
+           <button id="cg-gallery-btn" class="ui-button" title="CG鉴赏">🖼️</button>
+           <button id="refresh-images-btn" class="ui-button" title="更新立绘">🔄</button>
+           <button id="return-btn" class="ui-button" title="返回正文" style="display: none;">📖</button>
+       </div>
+   
+       <!-- 主要故事视图 -->
+       <div id="main-view" class="view active">
+           <div class="main-view-bg">
+               <article class="content-prose">
+   $1
+               </article>
+               <div id="options-container" class="options-container"></div>
+           </div>
+       </div>
+   
+       <!-- 角色信息视图 -->
+       <div id="character-view" class="view">
+           <div id="character-page" class="character-page">
+               <div class="character-sprite-container">
+                   <div id="sprite-loader" class="sprite-loader">加载中...</div>
+                   <img id="character-sprite" class="character-sprite" src="" alt="Character Sprite">
+               </div>
+               <div class="character-info-panel">
+                   <div id="character-tabs" class="character-tabs"></div>
+                   <div class="character-content">
+                       <div id="character-card" class="character-card">
+                           <!-- 内容将由JS动态生成 -->
+                       </div>
+                   </div>
+               </div>
+           </div>
+       </div>
+   
+       <!-- 新增：CG画廊视图 -->
+       <div id="cg-view" class="view">
+           <div class="cg-gallery-view">
+               <div id="cg-gallery-tabs" class="character-tabs" style="margin-bottom: 1.5rem;"></div>
+               <div style="margin-bottom: 1rem; text-align: center;">
+                   <button id="unlock-all-btn" class="option-button" style="display: inline-block; width: auto;">一键解锁全部CG (调试用)</button>
+               </div>
+               <div id="cg-grid" class="cg-grid">
+                   <!-- CG缩略图将由JS动态生成 -->
+               </div>
+               <div id="cg-pagination" class="pagination-container">
+                   <!-- 翻页按钮将由JS动态生成 -->
+               </div>
+           </div>
+       </div>
+       
+       <!-- SVG 闪电模板 -->
+       <div id="svg-templates" style="display: none;">
+           <svg id="lightning-template-1" viewBox="0 0 100 200">
+               <path class="lightning-path-main" d="M 50 0 L 55 60 L 40 75 L 50 130 L 45 200" />
+               <path class="lightning-path-branch" d="M 55 60 L 80 90" />
+           </svg>
+           <svg id="lightning-template-2" viewBox="0 0 100 200">
+               <path class="lightning-path-main" d="M 50 0 L 45 70 L 60 85 L 50 150 L 55 200" />
+               <path class="lightning-path-branch" d="M 45 70 L 20 100" />
+               <path class="lightning-path-branch" d="M 50 150 L 70 170" />
+           </svg>
+       </div>
+   
+       <!-- 新增：图片模态框 -->
+       <div id="image-modal" class="image-modal">
+           <span id="modal-close-btn" class="modal-close-btn">&times;</span>
+           <img class="modal-content" id="modal-image">
+       </div>
+   </div>
+   
+   <script>
+   'use strict';
+   
+   // --- DOM 元素获取 ---
+   const mainView = document.getElementById('main-view');
+   const characterView = document.getElementById('character-view');
+   const cgView = document.getElementById('cg-view');
+   const charPageBtn = document.getElementById('char-page-btn');
+   const cgGalleryBtn = document.getElementById('cg-gallery-btn');
+   const returnBtn = document.getElementById('return-btn');
+   const themeToggleBtn = document.getElementById('theme-toggle-btn');
+   const characterPage = document.getElementById('character-page');
+   const characterInfoPanel = document.querySelector('.character-info-panel');
+   const charTabs = document.getElementById('character-tabs');
+   const characterCard = document.getElementById('character-card');
+   const characterSprite = document.getElementById('character-sprite');
+   const spriteLoader = document.getElementById('sprite-loader');
+   let articleElement = document.querySelector('.content-prose');
+   const optionsContainer = document.getElementById('options-container');
+   const imageModal = document.getElementById('image-modal');
+   const modalImage = document.getElementById('modal-image');
+   const modalCloseBtn = document.getElementById('modal-close-btn');
+   const refreshImagesBtn = document.getElementById('refresh-images-btn');
+   
+   // --- 动态角色立绘配置 ---
+   
+   // 1. 将您创建的 character_images.json 文件上传到 GitHub 仓库。
+   // 2. 在 GitHub 上打开这个文件，点击 "Raw" 按钮。
+   // 3. 将浏览器地址栏中的链接（以 raw.githubusercontent.com 开头）复制到下面。
+   // 4. 您也可以使用 jsDelivr CDN 来加速访问, 格式为: https://cdn.jsdelivr.net/gh/你的用户名/你的仓库名@分支名/文件路径/character_images.json
+   const characterImagesUrl = 'https://raw.githubusercontent.com/Molilili001/image/refs/heads/main/character_images.json'; // <-- 您提供的 GitHub Raw URL
+   
+   let characterImageOverrides = {};
+   
+   async function fetchCharacterImages() {
+       const CACHE_KEY = 'character_images_cache';
+       const LAST_FETCH_KEY = 'character_images_last_fetch';
+       const CACHE_DURATION_MS = 60 * 60 * 1000; // 1小时
+   
+       const lastFetchTime = localStorage.getItem(LAST_FETCH_KEY);
+       const isCacheExpired = !lastFetchTime || (new Date().getTime() - parseInt(lastFetchTime, 10) > CACHE_DURATION_MS);
+   
+       if (isCacheExpired) {
+           console.log("缓存过期或不存在，正在从网络获取最新立绘配置...");
+           try {
+               const urlWithCacheBust = `${characterImagesUrl}?t=${new Date().getTime()}`;
+               const response = await fetch(urlWithCacheBust);
+               if (!response.ok) {
+                   throw new Error(`HTTP error! status: ${response.status}`);
+               }
+               const data = await response.json();
+               characterImageOverrides = data;
+               localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+               localStorage.setItem(LAST_FETCH_KEY, new Date().getTime().toString());
+               console.log("角色立绘配置加载并缓存成功:", characterImageOverrides);
+           } catch (error) {
+               console.error("无法加载或解析角色立绘配置文件:", error);
+               alert(`错误：无法从GitHub加载最新的立绘配置文件。\n\n原因: ${error.message}\n\n将尝试使用旧的缓存或备用图片。`);
+               
+               const cachedData = localStorage.getItem(CACHE_KEY);
+               if (cachedData) {
+                   console.log("网络获取失败，使用上次缓存的数据。");
+                   characterImageOverrides = JSON.parse(cachedData);
+               } else {
+                   characterImageOverrides = {
+                       '洛千霜': { "sfw": ["https://cdn.jsdelivr.net/gh/Molilili001/image/test/4%E3%80%81%E5%88%86%E5%9D%97%E6%94%BE%E5%A4%A7_None_00004_.png"] },
+                       '林语惊': { "sfw": ["https://cdn.jsdelivr.net/gh/Molilili001/image/test/4%E3%80%81%E5%88%86%E5%9D%97%E6%94%BE%E5%A4%A7_None_00003_.png"] },
+                       '陈予欢': { "sfw": ["https://cdn.jsdelivr.net/gh/Molilili001/image/test/4%E3%80%81%E5%88%86%E5%9D%97%E6%94%BE%E5%A4%A7_None_00002_.png"] }
+                   };
+                   console.log("已加载备用立绘数据。");
+               }
+           }
+       } else {
+           console.log("缓存有效，从本地存储加载立绘配置。");
+           const cachedData = localStorage.getItem(CACHE_KEY);
+           if (cachedData) {
+               characterImageOverrides = JSON.parse(cachedData);
+           } else {
+               // 如果缓存时间有效但数据丢失，则强制重新获取
+               localStorage.removeItem(LAST_FETCH_KEY);
+               await fetchCharacterImages(); // 重新执行获取逻辑
+           }
+       }
+   }
+   
+   async function forceFetchCharacterImages() {
+       localStorage.removeItem('character_images_last_fetch');
+       alert('正在强制从服务器更新立绘配置...');
+       await fetchCharacterImages();
+       alert('立绘配置更新成功！');
+       // 如果当前在角色视图，则重新渲染以立即显示新图片
+       if (characterView.classList.contains('active')) {
+           const activeTab = document.querySelector('.tab-button.active');
+           if (activeTab) {
+               await renderCharacterSheet(activeTab.dataset.char);
+           }
+       }
+   }
+   
+   // --- 核心功能函数 ---
+   
+   function switchView(viewToShow) {
+       mainView.classList.toggle('active', viewToShow === 'main');
+       characterView.classList.toggle('active', viewToShow === 'character');
+       cgView.classList.toggle('active', viewToShow === 'cg');
+   
+       const isMainView = viewToShow === 'main';
+       // 在主视图，显示功能按钮，隐藏返回按钮
+       themeToggleBtn.style.display = isMainView ? 'flex' : 'none';
+       charPageBtn.style.display = isMainView ? 'flex' : 'none';
+       cgGalleryBtn.style.display = isMainView ? 'flex' : 'none';
+       refreshImagesBtn.style.display = isMainView ? 'flex' : 'none';
+       returnBtn.style.display = !isMainView ? 'flex' : 'none';
+   }
+   
+   function animateValue(element, start, end, duration) {
+       let startTimestamp = null;
+       const step = (timestamp) => {
+           if (!startTimestamp) startTimestamp = timestamp;
+           const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+           element.textContent = Math.floor(progress * (end - start) + start);
+           if (progress < 1) {
+               window.requestAnimationFrame(step);
+           }
+       };
+       window.requestAnimationFrame(step);
+   }
+   
+   let lightningTimeoutId = null; // 用于控制闪电效果的定时器
+   
+   function createLightningBolt(container) {
+       if (!container) return;
+   
+       // 随机选择一个SVG模板
+       const templateId = `lightning-template-${Math.ceil(Math.random() * 2)}`;
+       const template = document.getElementById(templateId);
+       if (!template) return;
+   
+       // 克隆SVG元素
+       const svgClone = template.cloneNode(true);
+       svgClone.removeAttribute('id');
+       svgClone.classList.add('lightning-svg');
+   
+       // 随机定位
+       const panelRect = container.getBoundingClientRect();
+       const x = Math.random() * (panelRect.width - 150); // 减去SVG宽度
+       const y = Math.random() * (panelRect.height - 200); // 减去SVG高度
+       svgClone.style.left = `${x}px`;
+       svgClone.style.top = `${y}px`;
+       
+       container.appendChild(svgClone);
+       
+       // 触发动画
+       requestAnimationFrame(() => {
+           svgClone.classList.add('flash');
+       });
+   
+       // 动画结束后移除
+       setTimeout(() => {
+           if (svgClone.parentElement) {
+               svgClone.remove();
+           }
+       }, 600); // 必须大于等于动画时长
+   }
+   
+   async function renderCharacterSheet(characterName) {
+       // --- 角色主题化 ---
+       const themeMap = {
+           '洛千霜': 'theme-luoqianshuang',
+           '林语惊': 'theme-linyujing',
+           '陈予欢': 'theme-chenyuhuan'
+       };
+       
+       // 1. 清理旧主题和动态元素
+       characterInfoPanel.className = 'character-info-panel'; // 重置所有类
+       const oldSnow = document.querySelector('.snow-container');
+       if (oldSnow) oldSnow.remove();
+       
+       if (lightningTimeoutId) {
+           clearTimeout(lightningTimeoutId);
+           lightningTimeoutId = null;
+       }
+       const oldLightningContainer = characterInfoPanel.querySelector('.lightning-container');
+       if (oldLightningContainer) oldLightningContainer.remove();
+   
+       // 2. 应用新主题
+       if (themeMap[characterName]) {
+           characterInfoPanel.classList.add(themeMap[characterName]);
+           
+           // 3. 根据角色应用特定动态效果
+           if (characterName === '洛千霜') {
+               const snowContainer = document.createElement('div');
+               snowContainer.className = 'snow-container';
+               for (let i = 0; i < 40; i++) {
+                   const snowflake = document.createElement('div');
+                   snowflake.className = 'snowflake';
+                   const size = Math.random() * 3.5 + 1 + 'px';
+                   snowflake.style.width = size;
+                   snowflake.style.height = size;
+                   snowflake.style.left = Math.random() * 100 + '%';
+                   snowflake.style.animationDuration = (Math.random() * 7 + 8) + 's';
+                   snowflake.style.animationDelay = Math.random() * 10 + 's';
+                   snowflake.style.opacity = Math.random() * 0.8 + 0.1;
+                   snowContainer.appendChild(snowflake);
+               }
+               characterPage.appendChild(snowContainer);
+           } else if (characterName === '林语惊') {
+               const container = document.createElement('div');
+               container.className = 'lightning-container';
+               characterInfoPanel.appendChild(container);
+               
+               function flashLoop() {
+                   createLightningBolt(container);
+                   const randomDelay = Math.random() * 2000 + 500; // 0.5s to 2.5s
+                   lightningTimeoutId = setTimeout(flashLoop, randomDelay);
+               }
+               flashLoop();
+           }
+       }
+   
+       let statData;
+       try {
+           const messages = await getChatMessages(getCurrentMessageId());
+           if (!messages || messages.length === 0 || !messages[0].data || !messages[0].data.stat_data) {
+               throw new Error("stat_data not found in message object.");
+           }
+           statData = messages[0].data.stat_data;
+       } catch (e) {
+           console.error("Failed to get stat_data:", e);
+           characterCard.innerHTML = `<h2 class="character-name">错误</h2><p>获取角色数据失败: ${e.message}</p>`;
+           return;
+       }
+   
+       if (!statData[characterName]) {
+           characterCard.innerHTML = `<h2 class="character-name">错误</h2><p>在数据中找不到角色: ${characterName}</p>`;
+           return;
+       }
+   
+       const charData = statData[characterName];
+       // --- 修改：只从SFW列表中随机选择立绘 ---
+       let imageUrl = '';
+       const charImageData = characterImageOverrides[characterName];
+       if (charImageData && Array.isArray(charImageData.sfw) && charImageData.sfw.length > 0) {
+           const sfwImages = charImageData.sfw;
+           imageUrl = sfwImages[Math.floor(Math.random() * sfwImages.length)];
+       } else {
+           // 备用逻辑，以防json格式不正确或sfw列表为空
+           let fallbackSource = (charData['图片'] && Array.isArray(charData['图片']) && charData['图片'][0] ? charData['图片'][0] : '');
+           if (Array.isArray(fallbackSource)) {
+               imageUrl = fallbackSource[Math.floor(Math.random() * fallbackSource.length)];
+           } else {
+               imageUrl = fallbackSource;
+           }
+       }
+       // --- 结束 ---
+   
+       // --- 更新立绘（带预加载）---
+       if (characterSprite.src !== imageUrl && imageUrl) {
+           characterSprite.style.opacity = 0;
+           spriteLoader.textContent = '加载中...';
+           spriteLoader.style.display = 'block';
+   
+           const preloader = new Image();
+           preloader.onload = () => {
+               characterSprite.src = imageUrl;
+               characterSprite.alt = `${characterName} Sprite`;
+               spriteLoader.style.display = 'none';
+               characterSprite.style.opacity = 1;
+           };
+           preloader.onerror = () => {
+               console.error(`立绘加载失败: ${imageUrl}`);
+               spriteLoader.textContent = '立绘加载失败';
+               // 可以在这里设置一个默认的错误图片
+               // characterSprite.src = 'path/to/error.png';
+               // characterSprite.style.opacity = 1;
+           };
+           preloader.src = imageUrl;
+   
+       } else if (!imageUrl) {
+            // 如果没有图片URL，则隐藏图片和加载提示
+           characterSprite.style.opacity = 0;
+           spriteLoader.style.display = 'none';
+       }
+   
+       characterCard.innerHTML = ''; // 清空旧内容
+   
+       const nameEl = document.createElement('h2');
+       nameEl.className = 'character-name';
+       nameEl.textContent = characterName;
+       characterCard.appendChild(nameEl);
+   
+       for (const key in charData) {
+           if (!Object.hasOwnProperty.call(charData, key) || key === '图片' || key === '在场状态') continue;
+   
+           const property = charData[key];
+           if (!Array.isArray(property)) continue;
+   
+           const value = property[0];
+           const description = property[1] || "";
+   
+           if (typeof value === 'number') {
+               const statsGrid = document.createElement('div');
+               statsGrid.className = 'stats-grid property';
+               statsGrid.dataset.type = key;
+               statsGrid.dataset.char = characterName;
+   
+               const label = document.createElement('span');
+               label.className = 'stat-label';
+               label.textContent = key;
+   
+               const barContainer = document.createElement('div');
+               barContainer.className = 'stat-bar';
+               const barInner = document.createElement('div');
+               barInner.className = 'stat-bar-inner';
+               barContainer.appendChild(barInner);
+   
+               const valueEl = document.createElement('span');
+               valueEl.className = 'stat-value';
+   
+               statsGrid.appendChild(label);
+               statsGrid.appendChild(barContainer);
+               statsGrid.appendChild(valueEl);
+               characterCard.appendChild(statsGrid);
+   
+               let percentage = value;
+               if (description.includes("[-100, 100]")) {
+                   percentage = ((value + 100) / 200) * 100;
+               }
+               percentage = Math.max(0, Math.min(100, percentage));
+   
+               setTimeout(() => { barInner.style.width = `${percentage}%`; }, 100);
+               animateValue(valueEl, 0, value, 800);
+           }
+           else {
+               let itemsArray = null;
+               if (Array.isArray(value)) {
+                   itemsArray = value;
+               } else if (property.every(item => typeof item === 'string' || item === null)) {
+                   itemsArray = property;
+               }
+   
+               if (itemsArray) {
+                   const itemsToDisplay = itemsArray.filter(item => {
+                       if (!item || typeof item !== 'string' || item === '$__META_EXTENSIBLE__$') {
+                           return false;
+                       }
+                       // 根据用户反馈，过滤掉作为描述性文字的条目
+                       if (item.includes('可扩展的数组') && item.includes('_.assign')) {
+                           return false;
+                       }
+                       return true;
+                   });
+                   
+                   if (itemsToDisplay.length > 0) {
+                       const timeline = document.createElement('ul');
+                       timeline.className = 'events-timeline';
+                       
+                       const title = document.createElement('h3');
+                       title.textContent = key;
+                       if (key === '重要事件') {
+                           title.style.marginTop = '2rem';
+                       }
+                       characterCard.appendChild(title);
+   
+                       itemsToDisplay.forEach(itemText => {
+                           const li = document.createElement('li');
+                           li.className = 'event-item';
+                           const p = document.createElement('p');
+                           p.textContent = itemText;
+                           li.appendChild(p);
+                           timeline.appendChild(li);
+                       });
+                       characterCard.appendChild(timeline);
+                   }
+               }
+           }
+       }
+   
+       document.querySelectorAll('.tab-button').forEach(btn => {
+           btn.classList.toggle('active', btn.dataset.char === characterName);
+       });
+   }
+   
+   async function initializeCharacterPage() {
+       let statData;
+       try {
+           const messages = await getChatMessages(getCurrentMessageId());
+           if (!messages || messages.length === 0 || !messages[0].data || !messages[0].data.stat_data) {
+               throw new Error("stat_data not found in message object.");
+           }
+           statData = messages[0].data.stat_data;
+       } catch (e) {
+           console.error("Failed to initialize character page:", e);
+           characterCard.innerHTML = `<h2 class="character-name">错误</h2><p>初始化失败: ${e.message}</p>`;
+           return;
+       }
+   
+       charTabs.innerHTML = '';
+       const characters = Object.keys(statData).filter(key => key !== '世界' && statData[key]['在场状态'] && statData[key]['在场状态'][0]);
+   
+       characters.forEach(name => {
+           const button = document.createElement('button');
+           button.className = 'tab-button';
+           button.dataset.char = name;
+           button.textContent = name;
+           button.addEventListener('click', () => renderCharacterSheet(name));
+           charTabs.appendChild(button);
+       });
+   
+       if (characters.length > 0) {
+           await renderCharacterSheet(characters[0]);
+       } else {
+           characterCard.innerHTML = `<h2 class="character-name">无角色</h2><p>当前没有在场的角色。</p>`;
+       }
+   }
+   
+   async function sendToSillyTavern(text) {
+       const slashCommand = `/send ${text}\n|\n/trigger`;
+       try {
+           if (typeof triggerSlash === 'function') {
+               await triggerSlash(slashCommand, 'Send');
+           } else {
+               console.log("SillyTavern函数 'triggerSlash' 未找到。");
+               navigator.clipboard.writeText(slashCommand).then(() => {
+                   alert('SillyTavern连接失败！指令已复制到剪贴板，请手动粘贴发送。');
+               }).catch(err => {
+                   alert('复制到剪贴板失败，请手动复制选项内容。');
+                   console.error('复制失败:', err);
+               });
+           }
+       } catch (error) {
+           console.error('与SillyTavern交互时发生错误:', error);
+           alert('与SillyTavern交互时发生错误，详情请查看浏览器控制台。');
+       }
+   }
+   
+   function parseAndCreateOptions() {
+       if (!articleElement || !optionsContainer) return;
+       
+       let content = articleElement.innerHTML;
+   
+       const optionRegex = /<option>(.*?)<\/option>/g;
+       const detailsRegex = /<details>[\s\S]*?<\/details>/g;
+       const updateVarRegex = /<UpdateVariable>[\s\S]*?<\/UpdateVariable>/g;
+   
+       const optionMatches = Array.from(content.matchAll(optionRegex));
+   
+       content = content.replace(optionRegex, '')
+                        .replace(detailsRegex, '')
+                        .replace(updateVarRegex, '')
+                        .trim();
+       
+       articleElement.innerHTML = content;
+   
+       optionsContainer.innerHTML = '';
+       if (optionMatches.length > 0) {
+           optionsContainer.style.display = 'flex';
+           optionMatches.forEach(match => {
+               const optionText = match[1].trim();
+               const button = document.createElement('button');
+               button.className = 'option-button';
+               button.innerHTML = optionText;
+               button.addEventListener('click', () => sendToSillyTavern(optionText));
+               optionsContainer.appendChild(button);
+           });
+       } else {
+           optionsContainer.style.display = 'none';
+       }
+   }
+   
+   function highlightQuotes() {
+       if (!articleElement) return;
+       if(articleElement.innerHTML.includes('class="dialogue-quote"')) return;
+       
+       const quoteRegex = /(["“])(.+?)(["”])/g;
+       const replacement = '<span class="dialogue-quote">$&</span>';
+       articleElement.innerHTML = articleElement.innerHTML.replace(quoteRegex, replacement);
+   }
+
+   // --- 主题切换逻辑 ---
+   const THEME_STORAGE_KEY = 'galgame_theme';
+   
+   function applyTheme(theme) {
+       if (theme === 'dark') {
+           document.body.classList.add('dark-mode');
+           themeToggleBtn.textContent = '☀️';
+       } else {
+           document.body.classList.remove('dark-mode');
+           themeToggleBtn.textContent = '🌙';
+       }
+   }
+   
+   function toggleTheme() {
+       const isDark = document.body.classList.contains('dark-mode');
+       const newTheme = isDark ? 'light' : 'dark';
+       applyTheme(newTheme);
+       localStorage.setItem(THEME_STORAGE_KEY, newTheme);
+   }
+   
+   // --- 重构：CG画廊与解锁功能 ---
+   const UNLOCKED_CGS_KEY = 'unlocked_hidden_cgs';
+   let unlockedCgs = new Set(JSON.parse(localStorage.getItem(UNLOCKED_CGS_KEY) || '[]'));
+   let forceUnlockAll = false;
+   
+   function openImageModal(src) {
+       modalImage.src = src;
+       imageModal.classList.add('visible');
+   }
+   
+   function closeImageModal() {
+       imageModal.classList.remove('visible');
+   }
+   
+   function saveUnlockedCgs() {
+       localStorage.setItem(UNLOCKED_CGS_KEY, JSON.stringify(Array.from(unlockedCgs)));
+   }
+   
+   async function checkUnlockables(statData) {
+       if (!statData || !characterImageOverrides) return;
+   
+       let newUnlockFound = false;
+       let newlyUnlockedUrl = null;
+   
+       for (const charName in characterImageOverrides) {
+           const charCgData = characterImageOverrides[charName];
+           if (!charCgData.hidden || !charCgData.hidden.url || unlockedCgs.has(charCgData.hidden.url)) {
+               continue;
+           }
+   
+           const condition = charCgData.hidden.unlock_condition;
+           if (!condition || !condition.path) continue;
+   
+           const pathParts = condition.path.split('.');
+           
+           let currentValue = statData;
+           for (const part of pathParts) {
+               if (currentValue === undefined || currentValue === null) break;
+               const match = part.match(/(\w+)\[(\d+)\]/);
+               if (match) {
+                   const key = match[1];
+                   const index = parseInt(match[2], 10);
+                   currentValue = (currentValue[key] && Array.isArray(currentValue[key])) ? currentValue[key][index] : undefined;
+               } else {
+                   currentValue = currentValue[part];
+               }
+           }
+   
+           if (currentValue === condition.value) {
+               unlockedCgs.add(charCgData.hidden.url);
+               newUnlockFound = true;
+               newlyUnlockedUrl = charCgData.hidden.url;
+               console.log(`新CG已解锁: ${charName} - ${newlyUnlockedUrl}`);
+           }
+       }
+   
+       if (newUnlockFound) {
+           saveUnlockedCgs();
+           if (newlyUnlockedUrl) {
+               openImageModal(newlyUnlockedUrl); // 弹出最新解锁的CG
+           }
+       }
+   }
+   
+   const CGS_PER_PAGE = 12;
+   let currentCgPage = 1;
+   
+   function renderPagination(totalPages, currentPage, filter) {
+       const paginationContainer = document.getElementById('cg-pagination');
+       paginationContainer.innerHTML = '';
+   
+       if (totalPages <= 1) return;
+   
+       // 上一页按钮
+       const prevBtn = document.createElement('button');
+       prevBtn.className = 'page-btn';
+       prevBtn.textContent = '«';
+       prevBtn.disabled = currentPage === 1;
+       prevBtn.addEventListener('click', () => renderCgGrid(filter, currentPage - 1));
+       paginationContainer.appendChild(prevBtn);
+   
+       // 页码按钮
+       for (let i = 1; i <= totalPages; i++) {
+           const pageBtn = document.createElement('button');
+           pageBtn.className = 'page-btn';
+           if (i === currentPage) pageBtn.classList.add('active');
+           pageBtn.textContent = i;
+           pageBtn.addEventListener('click', () => renderCgGrid(filter, i));
+           paginationContainer.appendChild(pageBtn);
+       }
+   
+       // 下一页按钮
+       const nextBtn = document.createElement('button');
+       nextBtn.className = 'page-btn';
+       nextBtn.textContent = '»';
+       nextBtn.disabled = currentPage === totalPages;
+       nextBtn.addEventListener('click', () => renderCgGrid(filter, currentPage + 1));
+       paginationContainer.appendChild(nextBtn);
+   }
+   
+   function renderCgGrid(filter = 'All', page = 1) {
+       currentCgPage = page;
+       const cgGrid = document.getElementById('cg-grid');
+       cgGrid.innerHTML = '';
+   
+       document.querySelectorAll('#cg-gallery-tabs .tab-button').forEach(btn => {
+           btn.classList.toggle('active', btn.dataset.char === filter);
+       });
+   
+       const allImages = [];
+       for (const char in characterImageOverrides) {
+           const data = characterImageOverrides[char];
+           if (data.sfw && Array.isArray(data.sfw)) allImages.push(...data.sfw.map(url => ({ url, locked: false, char })));
+           if (data.nsfw && Array.isArray(data.nsfw)) allImages.push(...data.nsfw.map(url => ({ url, locked: false, char })));
+           if (data.hidden && data.hidden.url) {
+               const isUnlocked = forceUnlockAll || unlockedCgs.has(data.hidden.url);
+               allImages.push({ url: data.hidden.url, locked: !isUnlocked, char });
+           }
+       }
+   
+       const filteredImages = filter === 'All'
+           ? allImages
+           : allImages.filter(img => img.char === filter);
+   
+       const uniqueImages = Array.from(new Map(filteredImages.map(item => [item.url, item])).values());
+   
+       if (uniqueImages.length === 0) {
+           cgGrid.innerHTML = `<p>“${filter}”分类下暂无CG。</p>`;
+           renderPagination(0, 1, filter);
+           return;
+       }
+   
+       const totalPages = Math.ceil(uniqueImages.length / CGS_PER_PAGE);
+       const startIndex = (page - 1) * CGS_PER_PAGE;
+       const imagesForPage = uniqueImages.slice(startIndex, startIndex + CGS_PER_PAGE);
+   
+       imagesForPage.forEach(({ url, locked, char }) => {
+           const item = document.createElement('div');
+           item.className = 'cg-item';
+           if (locked) item.classList.add('locked');
+   
+           const thumbnail = document.createElement('img');
+           thumbnail.src = url;
+           thumbnail.className = 'cg-thumbnail';
+           thumbnail.alt = `CG for ${char}`;
+           thumbnail.loading = 'lazy';
+   
+           item.appendChild(thumbnail);
+           if (!locked) {
+               item.addEventListener('click', () => openImageModal(url));
+           }
+           cgGrid.appendChild(item);
+       });
+   
+       renderPagination(totalPages, page, filter);
+   }
+   
+   async function initializeCgGallery() {
+       const cgTabs = document.getElementById('cg-gallery-tabs');
+       cgTabs.innerHTML = '';
+   
+       const characters = Object.keys(characterImageOverrides);
+       if (characters.length === 0) {
+           document.getElementById('cg-grid').innerHTML = '<p>暂无CG可供鉴赏。</p>';
+           return;
+       }
+   
+       const allBtn = document.createElement('button');
+       allBtn.className = 'tab-button active';
+       allBtn.dataset.char = 'All';
+       allBtn.textContent = '全部';
+       allBtn.addEventListener('click', () => renderCgGrid('All', 1));
+       cgTabs.appendChild(allBtn);
+   
+       characters.forEach(name => {
+           const button = document.createElement('button');
+           button.className = 'tab-button';
+           button.dataset.char = name;
+           button.textContent = name;
+           button.addEventListener('click', () => renderCgGrid(name, 1));
+           cgTabs.appendChild(button);
+       });
+   
+       renderCgGrid('All', 1);
+   }
+   
+   // --- 初始化与事件监听 ---
+   document.addEventListener('DOMContentLoaded', async () => {
+       let isCharPageInitialized = false;
+   
+       // 1. 基础UI交互
+       highlightQuotes();
+       parseAndCreateOptions();
+       returnBtn.addEventListener('click', () => switchView('main'));
+       themeToggleBtn.addEventListener('click', toggleTheme);
+       modalCloseBtn.addEventListener('click', closeImageModal);
+       imageModal.addEventListener('click', (e) => {
+           if (e.target === imageModal) { // 点击模态框背景关闭
+               closeImageModal();
+           }
+       });
+       refreshImagesBtn.addEventListener('click', forceFetchCharacterImages);
+   
+       // 2. 角色页面按钮点击事件
+       charPageBtn.addEventListener('click', async () => {
+           await fetchCharacterImages();
+   
+           if (typeof getChatMessages !== 'function' || typeof getCurrentMessageId !== 'function') {
+               characterCard.innerHTML = `<h2 class="character-name">环境错误</h2><p>无法找到 SillyTavern 的 getChatMessages 或 getCurrentMessageId 函数。</p>`;
+           } else {
+               try {
+                   const messages = await getChatMessages(getCurrentMessageId());
+                   const statData = messages?.[0]?.data?.stat_data;
+                   await checkUnlockables(statData); // 检查解锁
+   
+                   if (!isCharPageInitialized) {
+                       await initializeCharacterPage();
+                       isCharPageInitialized = true;
+                   } else {
+                       const activeTab = document.querySelector('.tab-button.active');
+                       if (activeTab) {
+                           await renderCharacterSheet(activeTab.dataset.char);
+                       } else {
+                           await initializeCharacterPage();
+                       }
+                   }
+               } catch (e) {
+                    console.error("点击角色按钮时出错:", e);
+                    characterCard.innerHTML = `<h2 class="character-name">运行时错误</h2><p>${e.message}</p>`;
+               }
+           }
+           switchView('character');
+       });
+   
+       // 3. CG画廊按钮点击事件
+       cgGalleryBtn.addEventListener('click', async () => {
+           await fetchCharacterImages();
+           if (typeof getChatMessages === 'function' && typeof getCurrentMessageId === 'function') {
+               try {
+                   const messages = await getChatMessages(getCurrentMessageId());
+                   const statData = messages?.[0]?.data?.stat_data;
+                   await checkUnlockables(statData); // 每次打开都检查解锁
+               } catch (e) {
+                   console.error("检查CG解锁时出错:", e);
+               }
+           }
+           await initializeCgGallery();
+           switchView('cg');
+       });
+   
+       // 4. 一键解锁按钮
+       document.getElementById('unlock-all-btn').addEventListener('click', () => {
+           if (confirm('确定要解锁所有隐藏CG吗？此操作用于调试，会记录在本地存储中。')) {
+               forceUnlockAll = true;
+               // 将所有hidden CGs加入已解锁列表并保存
+               for (const char in characterImageOverrides) {
+                   const data = characterImageOverrides[char];
+                   if (data.hidden && data.hidden.url) {
+                       unlockedCgs.add(data.hidden.url);
+                   }
+               }
+               saveUnlockedCgs();
+               const currentFilter = document.querySelector('#cg-gallery-tabs .tab-button.active')?.dataset.char || 'All';
+               renderCgGrid(currentFilter, 1); // 解锁后回到第一页
+           }
+       });
+   
+       // 5. 加载并应用保存的主题
+       const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) || 'light';
+       applyTheme(savedTheme);
+   
+       // 6. 初始加载立绘配置
+       await fetchCharacterImages();
+   });
+   
+   </script>
+   </body>
+   </html>
