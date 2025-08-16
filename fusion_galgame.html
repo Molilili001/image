@@ -3,12 +3,9 @@
    <head>
        <meta charset="UTF-8">
        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-       <title>Galgame 交互界面</title>
+       <title>Galgame 交互界面 - 完整版</title>
    <style>
        /* --- 字体引入 --- */
-       /* 步骤1: 在这里引入您想使用的网络字体。
-          您可以从 Google Fonts (https://fonts.google.com/) 或其他免费字体网站找到 @import 链接。
-          下面是一个示例，引入了“马善政”字体。*/
        @import url('https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&display=swap');
    
        /* --- 全局与基础设置 --- */
@@ -45,6 +42,11 @@
        body {
            font-family: "Georgia", "Source Han Serif SC", "Songti SC", serif;
            background-color: var(--bg-main);
+           /* 新增：更有质感的渐变和纹理背景 */
+           background-image:
+               linear-gradient(175deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 20%),
+               radial-gradient(circle at top left, rgba(144, 101, 192, 0.15), transparent 40%),
+               radial-gradient(circle at bottom right, rgba(144, 101, 192, 0.15), transparent 50%);
            color: var(--text-color);
            transition: background-color 0.5s ease, color 0.5s ease;
            overflow: hidden;
@@ -78,9 +80,9 @@
        .view.active { display: block; }
        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
    
-       /* --- 正文视图 --- */
+       /* --- 正文视图 (已更新) --- */
        .main-view-bg {
-           min-height: 100vh;
+           height: 100%;
            padding: 2rem;
            background:
                radial-gradient(circle at 15% 20%, var(--bg-spot), transparent 40%),
@@ -88,60 +90,76 @@
                radial-gradient(circle at 80% 75%, var(--bg-spot), transparent 45%);
            background-size: 100% 100%;
            background-attachment: fixed;
+           overflow-y: auto; /* 允许主视图内容滚动 */
        }
-       .content-prose {
+       .story-container {
            max-width: 800px;
            margin: 0 auto;
-           padding: 2rem 2.5rem;
-           font-size: 1.1rem;
-           line-height: 1.8;
-           white-space: pre-wrap;
-           text-align: justify;
-           background-color: var(--text-bg-gold);
            border-radius: 12px;
+           /* 移除 overflow: hidden 以便伪元素可以溢出 */
+           box-shadow: 0 8px 30px rgba(0,0,0,0.12); /* 增强阴影 */
            border: 1px solid var(--card-border-color);
+           background: var(--text-bg-gold);
            backdrop-filter: blur(8px);
-           -webkit-backdrop-filter: blur(8px);
-           box-shadow: 0 6px 25px rgba(0,0,0,0.08);
-           position: relative;
-           text-shadow: 0 1px 2px rgba(0,0,0,0.1);
-           opacity: 0;
-           animation: content-enter 0.8s 0.2s ease-out forwards;
+           position: relative; /* 为伪元素定位 */
+           padding: 5px; /* 为装饰边框留出空间 */
        }
-       @keyframes content-enter {
-           from { opacity: 0; transform: translateY(20px); }
-           to { opacity: 1; transform: translateY(0); }
-       }
-       .content-prose::before,
-       .content-prose::after {
+       /* 新增：为文本框添加装饰性角落 */
+       .story-container::before,
+       .story-container::after {
            content: '';
            position: absolute;
-           width: 25px;
-           height: 25px;
+           width: 30px;
+           height: 30px;
            border-color: var(--emphasis-color);
            border-style: solid;
-           opacity: 0.6;
-           transition: all 0.3s ease;
+           opacity: 0.5;
+           transition: all 0.4s ease;
        }
-       .content-prose::before {
-           top: -5px;
-           left: -5px;
+       .story-container::before {
+           top: -2px;
+           left: -2px;
            border-width: 2px 0 0 2px;
            border-top-left-radius: 12px;
        }
-       .content-prose::after {
-           bottom: -5px;
-           right: -5px;
+       .story-container::after {
+           bottom: -2px;
+           right: -2px;
            border-width: 0 2px 2px 0;
            border-bottom-right-radius: 12px;
        }
-       .content-prose:hover::before,
-       .content-prose:hover::after {
+       .story-container:hover::before,
+       .story-container:hover::after {
            opacity: 1;
-           transform: scale(1.1);
+           transform: scale(1.15);
        }
-       .content-prose em { color: var(--emphasis-color); font-style: italic; }
-       .content-prose .dialogue-quote { color: var(--quote-color); font-weight: 500; }
+       .main-content {
+           padding: 2rem 2.5rem;
+       }
+       .narrative-text {
+           white-space: pre-wrap;
+           line-height: 1.8;
+           font-size: 1.1rem;
+           text-align: justify;
+           min-height: 100px; /* 避免内容为空时塌陷 */
+       }
+       .narrative-text em { color: var(--emphasis-color); font-style: italic; }
+       .narrative-text .dialogue-quote { color: var(--quote-color); font-weight: 500; }
+
+       /* 兼容SillyTavern注入的图片样式 */
+       .cg-container {
+           width: 95%;
+           max-width: 700px; /* 在这里调整图片最大宽度 */
+           margin: 25px auto;
+           border-radius: 8px;
+           overflow: hidden;
+           box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+       }
+       .cg-image {
+           display: block;
+           width: 100%;
+           height: auto;
+       }
    
        /* --- 角色页面 --- */
        .character-page {
@@ -171,9 +189,9 @@
        }
    
        .character-sprite {
-           max-width: 100%;
-           max-height: 95%;
-           object-fit: contain; /* 保持立绘比例 */
+           width: 100%;
+           height: 100%;
+           object-fit: cover; /* 填充容器，保持比例，但可能会裁剪图像以适应 */
            transition: opacity 0.5s ease-in-out;
        }
    
@@ -367,10 +385,6 @@
        .character-name {
            font-size: 2.8rem;
            font-weight: bold;
-           /* 步骤2: 在这里使用您引入的字体名称。
-              将您选择的字体名放在最前面。如果字体名包含空格，请用引号括起来。
-              后面的 "Source Han Serif SC" 等是备用字体，如果网络字体加载失败，浏览器会依次尝试它们。
-              您也可以直接使用电脑上已安装的字体，例如 "楷体", "微软雅黑" 等。*/
            font-family: "Ma Shan Zheng", "Source Han Serif SC", "Songti SC", serif;
            color: var(--emphasis-color);
            margin-bottom: 2rem;
@@ -382,11 +396,14 @@
        }
        .stat-label { font-weight: bold; font-size: 0.9rem; }
        .stat-bar {
+           position: relative; /* 为中点标记定位 */
            width: 100%; background-color: rgba(0,0,0,0.1);
            border-radius: 5px; overflow: hidden; height: 18px;
            border: 1px solid var(--card-border-color);
        }
        .stat-bar-inner {
+           position: relative; /* 确保进度条在标记之上 */
+           z-index: 2;
            height: 100%; border-radius: 5px;
            transition: width 1s cubic-bezier(0.25, 1, 0.5, 1);
            width: 0%;
@@ -400,6 +417,18 @@
        .stat-value {
            font-size: 1.2rem; font-weight: bold;
            min-width: 40px; text-align: right;
+       }
+       /* 为好感度条添加一个中点（0点）标记 */
+       .property[data-type="好感度"] .stat-bar::before {
+           content: '';
+           position: absolute;
+           left: 50%;
+           top: 0;
+           bottom: 0;
+           width: 2px;
+           background-color: rgba(255, 255, 255, 0.6); /* 中点标记颜色，改为半透明白色以确保可见性 */
+           transform: translateX(-50%);
+           z-index: 3; /* 提高层级，确保在进度条之上 */
        }
        .events-timeline {
            list-style: none; padding-left: 1rem;
@@ -435,9 +464,20 @@
        }
        .ui-button:hover { transform: scale(1.1); border-color: var(--emphasis-color); }
        .options-container {
-           max-width: 800px; margin: 1rem auto 0 auto;
+           max-width: 800px; margin: 1rem auto;
            padding: 0 2.5rem 1.5rem 2.5rem; display: flex;
            flex-direction: column; gap: 0.75rem;
+       }
+       /* 新增：选项按钮入场动画 */
+       @keyframes option-entry {
+           from {
+               opacity: 0;
+               transform: translateY(15px);
+           }
+           to {
+               opacity: 1;
+               transform: translateY(0);
+           }
        }
        .option-button {
            display: block; width: 100%; padding: 0.8rem 1.2rem;
@@ -445,17 +485,24 @@
            font-size: 1rem; text-align: left; color: var(--text-color);
            background-color: rgba(255, 255, 255, 0.4);
            border: 1px solid var(--card-border-color);
-           border-radius: 6px; cursor: pointer; transition: all 0.2s ease;
+           border-radius: 6px; cursor: pointer;
+           transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+           /* 应用入场动画 */
+           opacity: 0;
+           transform: translateY(15px);
+           animation: option-entry 0.5s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
        }
        .option-button:hover {
            border-color: var(--emphasis-color);
-           background-color: rgba(255, 255, 255, 0.7);
+           background-color: rgba(255, 255, 255, 0.8);
+           transform: scale(1.02); /* 轻微放大 */
+           box-shadow: 0 4px 15px rgba(138, 79, 255, 0.2); /* 发光效果 */
        }
    
        /* --- 响应式设计 --- */
        @media (max-width: 768px) {
            .main-view-bg { padding: 1rem; }
-           .content-prose { padding: 1.5rem 1rem; font-size: 1rem; }
+           .main-content { padding: 1.5rem 1rem; }
            .ui-buttons { top: 15px; right: 15px; }
            .character-page {
                display: flex;
@@ -527,6 +574,8 @@
            display: grid;
            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
            gap: 1rem;
+           min-height: 800px; /* 重新设置最小高度以稳定布局 */
+           align-content: start; /* 确保网格项从顶部开始排列，防止垂直拉伸 */
        }
        .cg-item {
            border-radius: 8px;
@@ -535,6 +584,7 @@
            transition: transform 0.3s ease, box-shadow 0.3s ease;
            border: 2px solid var(--card-border-color);
            position: relative; /* 为锁定图标定位 */
+           aspect-ratio: 2 / 3; /* 设置宽高比为2:3，防止图片拉伸 */
        }
        .cg-item.locked {
            cursor: default;
@@ -563,6 +613,10 @@
            height: 100%;
            object-fit: cover;
            display: block;
+       }
+       /* 移除不再需要的标题样式 */
+       .cg-item.locked .cg-item-title {
+           opacity: 0;
        }
    
        /* --- 新增：翻页样式 --- */
@@ -608,10 +662,26 @@
        .image-modal.visible {
            display: flex;
        }
-       .modal-content {
+       .modal-content-wrapper {
+           display: flex;
+           flex-direction: column;
+           align-items: center;
+           justify-content: center;
            max-width: 90%;
            max-height: 90%;
+       }
+       .modal-content {
+           max-width: 100%;
+           max-height: calc(100% - 60px); /* 为描述文本留出空间 */
            object-fit: contain;
+           display: block;
+       }
+       .modal-description {
+           color: #fff;
+           margin-top: 15px;
+           font-size: 1.1rem;
+           text-align: center;
+           max-width: 80%;
        }
        .modal-close-btn {
            position: absolute;
@@ -639,12 +709,16 @@
            <button id="return-btn" class="ui-button" title="返回正文" style="display: none;">📖</button>
        </div>
    
-       <!-- 主要故事视图 -->
+       <!-- 主要故事视图 (已更新) -->
        <div id="main-view" class="view active">
            <div class="main-view-bg">
-               <article class="content-prose">
+               <div class="story-container">
+                   <div class="main-content">
+                       <div class="narrative-text">
    $1
-               </article>
+                       </div>
+                   </div>
+               </div>
                <div id="options-container" class="options-container"></div>
            </div>
        </div>
@@ -699,14 +773,17 @@
        <!-- 新增：图片模态框 -->
        <div id="image-modal" class="image-modal">
            <span id="modal-close-btn" class="modal-close-btn">&times;</span>
-           <img class="modal-content" id="modal-image">
+           <div class="modal-content-wrapper">
+               <img class="modal-content" id="modal-image">
+               <p class="modal-description" id="modal-description"></p>
+           </div>
        </div>
    </div>
    
    <script>
    'use strict';
    
-   // --- DOM 元素获取 ---
+   // --- DOM 元素获取 (已更新) ---
    const mainView = document.getElementById('main-view');
    const characterView = document.getElementById('character-view');
    const cgView = document.getElementById('cg-view');
@@ -720,21 +797,16 @@
    const characterCard = document.getElementById('character-card');
    const characterSprite = document.getElementById('character-sprite');
    const spriteLoader = document.getElementById('sprite-loader');
-   let articleElement = document.querySelector('.content-prose');
+   let articleElement = document.querySelector('.narrative-text'); // <-- 更新选择器
    const optionsContainer = document.getElementById('options-container');
    const imageModal = document.getElementById('image-modal');
    const modalImage = document.getElementById('modal-image');
+   const modalDescription = document.getElementById('modal-description');
    const modalCloseBtn = document.getElementById('modal-close-btn');
    const refreshImagesBtn = document.getElementById('refresh-images-btn');
    
    // --- 动态角色立绘配置 ---
-   
-   // 1. 将您创建的 character_images.json 文件上传到 GitHub 仓库。
-   // 2. 在 GitHub 上打开这个文件，点击 "Raw" 按钮。
-   // 3. 将浏览器地址栏中的链接（以 raw.githubusercontent.com 开头）复制到下面。
-   // 4. 您也可以使用 jsDelivr CDN 来加速访问, 格式为: https://cdn.jsdelivr.net/gh/你的用户名/你的仓库名@分支名/文件路径/character_images.json
-   const characterImagesUrl = 'https://raw.githubusercontent.com/Molilili001/image/refs/heads/main/character_images.json'; // <-- 您提供的 GitHub Raw URL
-   
+   const characterImagesUrl = 'https://raw.githubusercontent.com/Molilili001/image/refs/heads/main/character_images.json';
    let characterImageOverrides = {};
    
    async function fetchCharacterImages() {
@@ -781,9 +853,8 @@
            if (cachedData) {
                characterImageOverrides = JSON.parse(cachedData);
            } else {
-               // 如果缓存时间有效但数据丢失，则强制重新获取
                localStorage.removeItem(LAST_FETCH_KEY);
-               await fetchCharacterImages(); // 重新执行获取逻辑
+               await fetchCharacterImages();
            }
        }
    }
@@ -793,7 +864,6 @@
        alert('正在强制从服务器更新立绘配置...');
        await fetchCharacterImages();
        alert('立绘配置更新成功！');
-       // 如果当前在角色视图，则重新渲染以立即显示新图片
        if (characterView.classList.contains('active')) {
            const activeTab = document.querySelector('.tab-button.active');
            if (activeTab) {
@@ -810,7 +880,6 @@
        cgView.classList.toggle('active', viewToShow === 'cg');
    
        const isMainView = viewToShow === 'main';
-       // 在主视图，显示功能按钮，隐藏返回按钮
        themeToggleBtn.style.display = isMainView ? 'flex' : 'none';
        charPageBtn.style.display = isMainView ? 'flex' : 'none';
        cgGalleryBtn.style.display = isMainView ? 'flex' : 'none';
@@ -831,53 +900,45 @@
        window.requestAnimationFrame(step);
    }
    
-   let lightningTimeoutId = null; // 用于控制闪电效果的定时器
+   let lightningTimeoutId = null;
    
    function createLightningBolt(container) {
        if (!container) return;
-   
-       // 随机选择一个SVG模板
        const templateId = `lightning-template-${Math.ceil(Math.random() * 2)}`;
        const template = document.getElementById(templateId);
        if (!template) return;
    
-       // 克隆SVG元素
        const svgClone = template.cloneNode(true);
        svgClone.removeAttribute('id');
        svgClone.classList.add('lightning-svg');
    
-       // 随机定位
        const panelRect = container.getBoundingClientRect();
-       const x = Math.random() * (panelRect.width - 150); // 减去SVG宽度
-       const y = Math.random() * (panelRect.height - 200); // 减去SVG高度
+       const x = Math.random() * (panelRect.width - 150);
+       const y = Math.random() * (panelRect.height - 200);
        svgClone.style.left = `${x}px`;
        svgClone.style.top = `${y}px`;
        
        container.appendChild(svgClone);
        
-       // 触发动画
        requestAnimationFrame(() => {
            svgClone.classList.add('flash');
        });
    
-       // 动画结束后移除
        setTimeout(() => {
            if (svgClone.parentElement) {
                svgClone.remove();
            }
-       }, 600); // 必须大于等于动画时长
+       }, 600);
    }
    
    async function renderCharacterSheet(characterName) {
-       // --- 角色主题化 ---
        const themeMap = {
            '洛千霜': 'theme-luoqianshuang',
            '林语惊': 'theme-linyujing',
            '陈予欢': 'theme-chenyuhuan'
        };
        
-       // 1. 清理旧主题和动态元素
-       characterInfoPanel.className = 'character-info-panel'; // 重置所有类
+       characterInfoPanel.className = 'character-info-panel';
        const oldSnow = document.querySelector('.snow-container');
        if (oldSnow) oldSnow.remove();
        
@@ -888,11 +949,9 @@
        const oldLightningContainer = characterInfoPanel.querySelector('.lightning-container');
        if (oldLightningContainer) oldLightningContainer.remove();
    
-       // 2. 应用新主题
        if (themeMap[characterName]) {
            characterInfoPanel.classList.add(themeMap[characterName]);
            
-           // 3. 根据角色应用特定动态效果
            if (characterName === '洛千霜') {
                const snowContainer = document.createElement('div');
                snowContainer.className = 'snow-container';
@@ -916,7 +975,7 @@
                
                function flashLoop() {
                    createLightningBolt(container);
-                   const randomDelay = Math.random() * 2000 + 500; // 0.5s to 2.5s
+                   const randomDelay = Math.random() * 2000 + 500;
                    lightningTimeoutId = setTimeout(flashLoop, randomDelay);
                }
                flashLoop();
@@ -942,14 +1001,12 @@
        }
    
        const charData = statData[characterName];
-       // --- 修改：只从SFW列表中随机选择立绘 ---
        let imageUrl = '';
        const charImageData = characterImageOverrides[characterName];
        if (charImageData && Array.isArray(charImageData.sfw) && charImageData.sfw.length > 0) {
            const sfwImages = charImageData.sfw;
            imageUrl = sfwImages[Math.floor(Math.random() * sfwImages.length)];
        } else {
-           // 备用逻辑，以防json格式不正确或sfw列表为空
            let fallbackSource = (charData['图片'] && Array.isArray(charData['图片']) && charData['图片'][0] ? charData['图片'][0] : '');
            if (Array.isArray(fallbackSource)) {
                imageUrl = fallbackSource[Math.floor(Math.random() * fallbackSource.length)];
@@ -957,9 +1014,7 @@
                imageUrl = fallbackSource;
            }
        }
-       // --- 结束 ---
    
-       // --- 更新立绘（带预加载）---
        if (characterSprite.src !== imageUrl && imageUrl) {
            characterSprite.style.opacity = 0;
            spriteLoader.textContent = '加载中...';
@@ -975,19 +1030,15 @@
            preloader.onerror = () => {
                console.error(`立绘加载失败: ${imageUrl}`);
                spriteLoader.textContent = '立绘加载失败';
-               // 可以在这里设置一个默认的错误图片
-               // characterSprite.src = 'path/to/error.png';
-               // characterSprite.style.opacity = 1;
            };
            preloader.src = imageUrl;
    
        } else if (!imageUrl) {
-            // 如果没有图片URL，则隐藏图片和加载提示
            characterSprite.style.opacity = 0;
            spriteLoader.style.display = 'none';
        }
    
-       characterCard.innerHTML = ''; // 清空旧内容
+       characterCard.innerHTML = '';
    
        const nameEl = document.createElement('h2');
        nameEl.className = 'character-name';
@@ -1049,7 +1100,6 @@
                        if (!item || typeof item !== 'string' || item === '$__META_EXTENSIBLE__$') {
                            return false;
                        }
-                       // 根据用户反馈，过滤掉作为描述性文字的条目
                        if (item.includes('可扩展的数组') && item.includes('_.assign')) {
                            return false;
                        }
@@ -1139,47 +1189,111 @@
        }
    }
    
+   /**
+    * 选项解析函数 (已更新)
+    */
    function parseAndCreateOptions() {
        if (!articleElement || !optionsContainer) return;
-       
-       let content = articleElement.innerHTML;
-   
-       const optionRegex = /<option>(.*?)<\/option>/g;
-       const detailsRegex = /<details>[\s\S]*?<\/details>/g;
-       const updateVarRegex = /<UpdateVariable>[\s\S]*?<\/UpdateVariable>/g;
-   
-       const optionMatches = Array.from(content.matchAll(optionRegex));
-   
-       content = content.replace(optionRegex, '')
-                        .replace(detailsRegex, '')
-                        .replace(updateVarRegex, '')
-                        .trim();
-       
-       articleElement.innerHTML = content;
-   
+
+       // 1. 直接查找所有<option>元素
+       const optionElements = articleElement.querySelectorAll('option');
+       const allOptions = [];
+
+       // 2. 从元素中提取文本
+       optionElements.forEach(el => {
+           allOptions.push(el.textContent.trim());
+       });
+
+       // 3. 在外部容器创建按钮
        optionsContainer.innerHTML = '';
-       if (optionMatches.length > 0) {
+       if (allOptions.length > 0) {
            optionsContainer.style.display = 'flex';
-           optionMatches.forEach(match => {
-               const optionText = match[1].trim();
+           allOptions.forEach((optionText, index) => {
                const button = document.createElement('button');
                button.className = 'option-button';
-               button.innerHTML = optionText;
+               button.textContent = optionText; // 使用textContent更安全
                button.addEventListener('click', () => sendToSillyTavern(optionText));
+               // 新增：为每个按钮设置不同的动画延迟，实现依次入场效果
+               button.style.animationDelay = `${index * 0.07}s`;
                optionsContainer.appendChild(button);
            });
        } else {
            optionsContainer.style.display = 'none';
        }
+
+       // 4. 从DOM中移除原始的<option>元素，并清理周围的空白文本节点
+       optionElements.forEach(el => {
+           const prevSibling = el.previousSibling;
+           const nextSibling = el.nextSibling;
+
+           // 移除option元素本身
+           if (el.parentNode) {
+               el.parentNode.removeChild(el);
+           }
+
+           // 清理前面的空白节点
+           if (prevSibling && prevSibling.nodeType === Node.TEXT_NODE && prevSibling.textContent.trim() === '') {
+               prevSibling.parentNode.removeChild(prevSibling);
+           }
+           // 清理后面的空白节点
+           if (nextSibling && nextSibling.nodeType === Node.TEXT_NODE && nextSibling.textContent.trim() === '') {
+               nextSibling.parentNode.removeChild(nextSibling);
+           }
+       });
    }
    
-   function highlightQuotes() {
-       if (!articleElement) return;
-       if(articleElement.innerHTML.includes('class="dialogue-quote"')) return;
+   /**
+    * 高亮对话引号 (非破坏性版本)
+    */
+   function highlightQuotesNonDestructive(element) {
+       if (!element) return;
+
+       const quoteRegex = /(["“])([^"”]+)(["”])/g;
        
-       const quoteRegex = /(["“])(.+?)(["”])/g;
-       const replacement = '<span class="dialogue-quote">$&</span>';
-       articleElement.innerHTML = articleElement.innerHTML.replace(quoteRegex, replacement);
+       const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null, false);
+       const nodesToProcess = [];
+       let node;
+       while(node = walker.nextNode()) {
+           if (node.parentElement.tagName.toLowerCase() === 'script' ||
+               node.parentElement.tagName.toLowerCase() === 'style' ||
+               node.parentElement.classList.contains('dialogue-quote')) {
+               continue;
+           }
+           nodesToProcess.push(node);
+       }
+
+       nodesToProcess.forEach(textNode => {
+           const text = textNode.nodeValue;
+           if (!text.match(quoteRegex)) {
+               return;
+           }
+
+           const parent = textNode.parentNode;
+           if (!parent) return;
+
+           const fragment = document.createDocumentFragment();
+           let lastIndex = 0;
+           
+           text.replace(quoteRegex, (match, openQuote, content, closeQuote, offset) => {
+               if (offset > lastIndex) {
+                   fragment.appendChild(document.createTextNode(text.substring(lastIndex, offset)));
+               }
+               
+               const span = document.createElement('span');
+               span.className = 'dialogue-quote';
+               span.textContent = match;
+               fragment.appendChild(span);
+               
+               lastIndex = offset + match.length;
+               return match; // replace a a value, not used but required
+           });
+
+           if (lastIndex < text.length) {
+               fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
+           }
+
+           parent.replaceChild(fragment, textNode);
+       });
    }
 
    // --- 主题切换逻辑 ---
@@ -1207,8 +1321,9 @@
    let unlockedCgs = new Set(JSON.parse(localStorage.getItem(UNLOCKED_CGS_KEY) || '[]'));
    let forceUnlockAll = false;
    
-   function openImageModal(src) {
+   function openImageModal(src, description = '') {
        modalImage.src = src;
+       modalDescription.textContent = description;
        imageModal.classList.add('visible');
    }
    
@@ -1240,7 +1355,7 @@
            let currentValue = statData;
            for (const part of pathParts) {
                if (currentValue === undefined || currentValue === null) break;
-               const match = part.match(/(\w+)\[(\d+)\]/);
+               const match = part.match(/(.+)\[(\d+)\]/);
                if (match) {
                    const key = match[1];
                    const index = parseInt(match[2], 10);
@@ -1250,7 +1365,7 @@
                }
            }
    
-           if (currentValue === condition.value) {
+           if (currentValue == condition.value) {
                unlockedCgs.add(charCgData.hidden.url);
                newUnlockFound = true;
                newlyUnlockedUrl = charCgData.hidden.url;
@@ -1261,7 +1376,7 @@
        if (newUnlockFound) {
            saveUnlockedCgs();
            if (newlyUnlockedUrl) {
-               openImageModal(newlyUnlockedUrl); // 弹出最新解锁的CG
+               openImageModal(newlyUnlockedUrl);
            }
        }
    }
@@ -1275,7 +1390,6 @@
    
        if (totalPages <= 1) return;
    
-       // 上一页按钮
        const prevBtn = document.createElement('button');
        prevBtn.className = 'page-btn';
        prevBtn.textContent = '«';
@@ -1283,7 +1397,6 @@
        prevBtn.addEventListener('click', () => renderCgGrid(filter, currentPage - 1));
        paginationContainer.appendChild(prevBtn);
    
-       // 页码按钮
        for (let i = 1; i <= totalPages; i++) {
            const pageBtn = document.createElement('button');
            pageBtn.className = 'page-btn';
@@ -1293,7 +1406,6 @@
            paginationContainer.appendChild(pageBtn);
        }
    
-       // 下一页按钮
        const nextBtn = document.createElement('button');
        nextBtn.className = 'page-btn';
        nextBtn.textContent = '»';
@@ -1314,11 +1426,18 @@
        const allImages = [];
        for (const char in characterImageOverrides) {
            const data = characterImageOverrides[char];
-           if (data.sfw && Array.isArray(data.sfw)) allImages.push(...data.sfw.map(url => ({ url, locked: false, char })));
-           if (data.nsfw && Array.isArray(data.nsfw)) allImages.push(...data.nsfw.map(url => ({ url, locked: false, char })));
+           const mapImageData = (imgData, lockedDefault = false) => {
+               if (typeof imgData === 'string') {
+                   return { url: imgData, name: 'CG', description: '', locked: lockedDefault, char };
+               }
+               return { ...imgData, locked: lockedDefault, char };
+           };
+
+           if (data.sfw && Array.isArray(data.sfw)) allImages.push(...data.sfw.map(img => mapImageData(img)));
+           if (data.nsfw && Array.isArray(data.nsfw)) allImages.push(...data.nsfw.map(img => mapImageData(img)));
            if (data.hidden && data.hidden.url) {
                const isUnlocked = forceUnlockAll || unlockedCgs.has(data.hidden.url);
-               allImages.push({ url: data.hidden.url, locked: !isUnlocked, char });
+               allImages.push(mapImageData(data.hidden, !isUnlocked));
            }
        }
    
@@ -1338,20 +1457,21 @@
        const startIndex = (page - 1) * CGS_PER_PAGE;
        const imagesForPage = uniqueImages.slice(startIndex, startIndex + CGS_PER_PAGE);
    
-       imagesForPage.forEach(({ url, locked, char }) => {
+       imagesForPage.forEach(({ url, name, description, locked, char }) => {
            const item = document.createElement('div');
            item.className = 'cg-item';
            if (locked) item.classList.add('locked');
-   
+
            const thumbnail = document.createElement('img');
            thumbnail.src = url;
            thumbnail.className = 'cg-thumbnail';
-           thumbnail.alt = `CG for ${char}`;
+           thumbnail.alt = name || `CG for ${char}`;
            thumbnail.loading = 'lazy';
-   
+
            item.appendChild(thumbnail);
+
            if (!locked) {
-               item.addEventListener('click', () => openImageModal(url));
+               item.addEventListener('click', () => openImageModal(url, description));
            }
            cgGrid.appendChild(item);
        });
@@ -1388,18 +1508,16 @@
        renderCgGrid('All', 1);
    }
    
-   // --- 初始化与事件监听 ---
+   // --- 初始化与事件监听 (已更新) ---
    document.addEventListener('DOMContentLoaded', async () => {
        let isCharPageInitialized = false;
    
        // 1. 基础UI交互
-       highlightQuotes();
-       parseAndCreateOptions();
        returnBtn.addEventListener('click', () => switchView('main'));
        themeToggleBtn.addEventListener('click', toggleTheme);
        modalCloseBtn.addEventListener('click', closeImageModal);
        imageModal.addEventListener('click', (e) => {
-           if (e.target === imageModal) { // 点击模态框背景关闭
+           if (e.target === imageModal) {
                closeImageModal();
            }
        });
@@ -1415,7 +1533,7 @@
                try {
                    const messages = await getChatMessages(getCurrentMessageId());
                    const statData = messages?.[0]?.data?.stat_data;
-                   await checkUnlockables(statData); // 检查解锁
+                   await checkUnlockables(statData);
    
                    if (!isCharPageInitialized) {
                        await initializeCharacterPage();
@@ -1443,7 +1561,7 @@
                try {
                    const messages = await getChatMessages(getCurrentMessageId());
                    const statData = messages?.[0]?.data?.stat_data;
-                   await checkUnlockables(statData); // 每次打开都检查解锁
+                   await checkUnlockables(statData);
                } catch (e) {
                    console.error("检查CG解锁时出错:", e);
                }
@@ -1456,7 +1574,6 @@
        document.getElementById('unlock-all-btn').addEventListener('click', () => {
            if (confirm('确定要解锁所有隐藏CG吗？此操作用于调试，会记录在本地存储中。')) {
                forceUnlockAll = true;
-               // 将所有hidden CGs加入已解锁列表并保存
                for (const char in characterImageOverrides) {
                    const data = characterImageOverrides[char];
                    if (data.hidden && data.hidden.url) {
@@ -1465,7 +1582,7 @@
                }
                saveUnlockedCgs();
                const currentFilter = document.querySelector('#cg-gallery-tabs .tab-button.active')?.dataset.char || 'All';
-               renderCgGrid(currentFilter, 1); // 解锁后回到第一页
+               renderCgGrid(currentFilter, 1);
            }
        });
    
@@ -1475,6 +1592,27 @@
    
        // 6. 初始加载立绘配置
        await fetchCharacterImages();
+
+       // 7. 初始解析并设置内容变化监听 (已更新)
+       parseAndCreateOptions();
+       highlightQuotesNonDestructive(articleElement);
+ 
+       const observer = new MutationObserver((mutations) => {
+           observer.disconnect();
+           parseAndCreateOptions();
+           highlightQuotesNonDestructive(articleElement);
+           observer.observe(articleElement, {
+               childList: true,
+               characterData: true,
+               subtree: true
+           });
+       });
+   
+       observer.observe(articleElement, {
+           childList: true,
+           characterData: true,
+           subtree: true
+       });
    });
    
    </script>
