@@ -646,6 +646,11 @@
            cursor: not-allowed;
            opacity: 0.5;
        }
+       .page-ellipsis {
+           padding: 0.5rem 0.5rem;
+           color: var(--text-color);
+           align-self: center; /* 垂直居中 */
+       }
    
        /* --- 新增：图片模态框样式 --- */
        .image-modal {
@@ -1387,31 +1392,76 @@
    function renderPagination(totalPages, currentPage, filter) {
        const paginationContainer = document.getElementById('cg-pagination');
        paginationContainer.innerHTML = '';
-   
        if (totalPages <= 1) return;
-   
-       const prevBtn = document.createElement('button');
-       prevBtn.className = 'page-btn';
-       prevBtn.textContent = '«';
-       prevBtn.disabled = currentPage === 1;
-       prevBtn.addEventListener('click', () => renderCgGrid(filter, currentPage - 1));
-       paginationContainer.appendChild(prevBtn);
-   
-       for (let i = 1; i <= totalPages; i++) {
-           const pageBtn = document.createElement('button');
-           pageBtn.className = 'page-btn';
-           if (i === currentPage) pageBtn.classList.add('active');
-           pageBtn.textContent = i;
-           pageBtn.addEventListener('click', () => renderCgGrid(filter, i));
-           paginationContainer.appendChild(pageBtn);
+
+       const maxVisibleButtons = 7; // 最多显示的页码按钮数（建议为奇数）
+
+       const createButton = (text, page, isDisabled = false, isActive = false) => {
+           const btn = document.createElement('button');
+           btn.className = 'page-btn';
+           btn.textContent = text;
+           btn.disabled = isDisabled;
+           if (isActive) btn.classList.add('active');
+           btn.addEventListener('click', () => renderCgGrid(filter, page));
+           return btn;
+       };
+
+       const createEllipsis = () => {
+           const ellipsis = document.createElement('span');
+           ellipsis.className = 'page-ellipsis';
+           ellipsis.textContent = '...';
+           return ellipsis;
+       };
+
+       // “上一页”按钮
+       paginationContainer.appendChild(createButton('«', currentPage - 1, currentPage === 1));
+
+       if (totalPages <= maxVisibleButtons) {
+           // 如果总页数不多，全部显示
+           for (let i = 1; i <= totalPages; i++) {
+               paginationContainer.appendChild(createButton(i, i, false, i === currentPage));
+           }
+       } else {
+           // 页数太多，智能显示
+           let startPage, endPage;
+           const sideButtons = Math.floor((maxVisibleButtons - 3) / 2); // -3 是因为要显示首页、末页和当前页
+
+           // 总是显示第一页
+           paginationContainer.appendChild(createButton(1, 1, false, currentPage === 1));
+
+           // 计算中间页码范围
+           if (currentPage <= sideButtons + 2) {
+               startPage = 2;
+               endPage = maxVisibleButtons - 2;
+           } else if (currentPage >= totalPages - sideButtons - 1) {
+               startPage = totalPages - maxVisibleButtons + 3;
+               endPage = totalPages - 1;
+           } else {
+               startPage = currentPage - sideButtons;
+               endPage = currentPage + sideButtons;
+           }
+
+           // 前置省略号
+           if (startPage > 2) {
+               paginationContainer.appendChild(createEllipsis());
+           }
+
+           // 中间页码
+           for (let i = startPage; i <= endPage; i++) {
+               paginationContainer.appendChild(createButton(i, i, false, i === currentPage));
+           }
+
+           // 后置省略号
+           if (endPage < totalPages - 1) {
+               paginationContainer.appendChild(createEllipsis());
+           }
+
+           // 总是显示最后一页
+           paginationContainer.appendChild(createButton(totalPages, totalPages, false, currentPage === totalPages));
        }
-   
-       const nextBtn = document.createElement('button');
-       nextBtn.className = 'page-btn';
-       nextBtn.textContent = '»';
-       nextBtn.disabled = currentPage === totalPages;
-       nextBtn.addEventListener('click', () => renderCgGrid(filter, currentPage + 1));
-       paginationContainer.appendChild(nextBtn);
+
+       // “下一页”按钮
+       paginationContainer.appendChild(createButton('»', currentPage + 1, currentPage === totalPages));
    }
    
    function renderCgGrid(filter = 'All', page = 1) {
