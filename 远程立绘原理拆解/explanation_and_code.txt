@@ -1,0 +1,183 @@
+# Galgame 远程更新模块代码与功能解析
+
+本文档旨在解释 `fusion_galgame_complete.html` 文件中的核心功能，并提取出实现CG（或其他静态资源）远程更新的独立JavaScript模块。
+
+---
+
+## 一、 功能解析
+
+该 HTML 文件实现了一个功能丰富的 Galgame 交互界面，其核心亮点在于内容的**动态化**和**可扩展性**，主要体现在以下几个方面：
+
+1.  **远程资源配置**:
+    *   **核心机制**: 界面的关键资源，如角色立绘、CG图片等，并非硬编码在 HTML 文件中。它们的 URL 地址被存储在一个外部的、托管于网络的 JSON 文件中（例如在 GitHub Raw 上）。
+    *   **优势**: 这种设计极大地提高了灵活性。开发者可以随时更新、替换或增加新的图片资源，而无需修改和重新分发主 HTML 文件。用户只需刷新界面（或点击特定更新按钮），就能看到最新的内容。
+
+2.  **智能缓存策略**:
+    *   **性能优化**: 为了避免每次加载都从网络请求资源配置，代码实现了一套基于 `localStorage` 的智能缓存系统。
+    *   **工作流程**:
+        1.  加载时，首先检查本地是否存在有效的缓存数据。
+        2.  它会记录上次成功获取数据的时间戳，并设置一个缓存有效期（例如1小时）。
+        3.  只有当缓存不存在或已过期时，才会发起网络请求去获取最新的 JSON 配置文件。
+        4.  获取成功后，新的配置会覆盖旧的缓存，并更新时间戳。
+    *   **离线友好**: 如果网络请求失败（例如服务器无法访问），代码会优雅地降级，尝试使用上一次的缓存数据。如果连缓存都没有，则会加载一组写在代码里的“备用”默认资源，确保界面在最糟糕的情况下也能基本运行。
+
+3.  **手动强制更新**:
+    *   **用户自主性**: 提供了一个“更新立绘”按钮。用户点击该按钮可以绕过缓存时效，立即强制从服务器获取最新的资源配置。这对于即时查看更新内容非常有用。
+
+4.  **动态内容解锁**:
+    *   **游戏化体验**: 除了展示图片，系统还包含了一套动态解锁隐藏CG的逻辑。
+    *   **实现方式**: 远程 JSON 文件中可以定义“隐藏”CG，并为其关联一个解锁条件（`unlock_condition`）。这个条件通常与游戏内的某个状态值（`stat_data`）相关联，例如好感度达到某个数值。
+    *   **持久化**: 当玩家在游戏中的行为满足了解锁条件，该CG会被标记为“已解锁”，并且这个状态会保存在用户的 `localStorage` 中，确保解锁进度不会丢失。
+
+5.  **模块化视图**:
+    *   整个界面被划分为主故事视图、角色详情页和CG鉴赏画廊等多个独立的视图。通过 JavaScript 控制视图的切换，使得用户体验流畅且结构清晰。
+
+---
+
+## 二、 核心模块代码提取
+
+以下是从 HTML 文件中提取并稍作整理的 JavaScript 模块，专注于实现资源的远程获取、缓存和强制更新。你可以将此代码集成到你自己的项目中。
+
+```javascript
+/**
+ * =================================================================
+ * Galgame Remote Resource Updater Module
+ * -----------------------------------------------------------------
+ * 模块功能:
+ * 1. 从远程 URL 获取 JSON 配置文件。
+ * 2. 对配置文件进行本地缓存，并设置有效期。
+ * 3. 支持手动强制刷新配置。
+ * 4. 在网络失败时，能够优雅地降级到旧缓存或备用数据。
+ * =================================================================
+ */
+
+class RemoteResourceUpdater {
+    /**
+     * 构造函数
+     * @param {string} remoteUrl - 远程 JSON 配置文件的 URL.
+     * @param {object} options - 配置选项.
+     * @param {string} [options.cacheKey='resource_cache'] - 存储数据在 localStorage 中的键名.
+     * @param {string} [options.lastFetchKey='resource_last_fetch'] - 存储时间戳在 localStorage 中的键名.
+     * @param {number} [options.cacheDurationMs=3600000] - 缓存有效期（毫秒），默认为 1 小时.
+     * @param {object} [options.fallbackData={}] - 网络和缓存均失败时的备用数据.
+     */
+    constructor(remoteUrl, options = {}) {
+        this.remoteUrl = remoteUrl;
+        this.config = {
+            cacheKey: options.cacheKey || 'resource_cache',
+            lastFetchKey: options.lastFetchKey || 'resource_last_fetch',
+            cacheDurationMs: options.cacheDurationMs || 60 * 60 * 1000, // 1 hour
+            fallbackData: options.fallbackData || {}
+        };
+        this.data = {};
+    }
+
+    /**
+     * 获取资源数据。优先从缓存读取，缓存过期则从网络获取。
+     * @returns {Promise<object>} 解析后的资源数据.
+     */
+    async getData() {
+        const lastFetchTime = localStorage.getItem(this.config.lastFetchKey);
+        const isCacheExpired = !lastFetchTime || (new Date().getTime() - parseInt(lastFetchTime, 10) > this.config.cacheDurationMs);
+
+        if (isCacheExpired) {
+            console.log("缓存过期或不存在，正在从网络获取最新配置...");
+            try {
+                await this.fetchFromNetwork();
+            } catch (error) {
+                console.error("网络获取失败:", error);
+                alert(`错误：无法从服务器加载最新的配置文件。\n\n原因: ${error.message}\n\n将尝试使用旧的缓存或备用数据。`);
+                this.loadFromCacheOrFallback();
+            }
+        } else {
+            console.log("缓存有效，从本地存储加载配置。");
+            this.loadFromCacheOrFallback();
+        }
+        
+        return this.data;
+    }
+
+    /**
+     * 强制从网络获取最新数据，并更新缓存。
+     * @returns {Promise<object>} 最新的资源数据.
+     */
+    async forceFetchData() {
+        console.log("正在强制从服务器更新配置...");
+        localStorage.removeItem(this.config.lastFetchKey); // 使缓存立即失效
+        await this.getData();
+        console.log("配置更新成功！");
+        return this.data;
+    }
+
+    /**
+     * 内部方法：从网络获取数据。
+     * @private
+     */
+    async fetchFromNetwork() {
+        // 添加时间戳作为查询参数以防止浏览器HTTP缓存
+        const urlWithCacheBust = `${this.remoteUrl}?t=${new Date().getTime()}`;
+        const response = await fetch(urlWithCacheBust);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const jsonData = await response.json();
+        this.data = jsonData;
+        
+        // 更新缓存和时间戳
+        localStorage.setItem(this.config.cacheKey, JSON.stringify(jsonData));
+        localStorage.setItem(this.config.lastFetchKey, new Date().getTime().toString());
+        
+        console.log("配置加载并缓存成功:", this.data);
+    }
+
+    /**
+     * 内部方法：从缓存加载数据，如果缓存不存在则使用备用数据。
+     * @private
+     */
+    loadFromCacheOrFallback() {
+        const cachedData = localStorage.getItem(this.config.cacheKey);
+        if (cachedData) {
+            console.log("从缓存加载数据。");
+            this.data = JSON.parse(cachedData);
+        } else {
+            console.log("缓存为空，加载备用数据。");
+            this.data = this.config.fallbackData;
+        }
+    }
+}
+
+// 示例用法:
+/*
+document.addEventListener('DOMContentLoaded', async () => {
+    const CHARACTER_IMAGES_URL = 'https://raw.githubusercontent.com/Molilili001/image/refs/heads/main/character_images.json';
+    
+    const fallbackImages = {
+        '角色A': { "sfw": ["path/to/fallback_a.png"] },
+        '角色B': { "sfw": ["path/to/fallback_b.png"] }
+    };
+
+    const imageUpdater = new RemoteResourceUpdater(CHARACTER_IMAGES_URL, {
+        cacheKey: 'character_images_cache',
+        lastFetchKey: 'character_images_last_fetch',
+        fallbackData: fallbackImages
+    });
+
+    // 首次加载数据
+    const characterImages = await imageUpdater.getData();
+    console.log('当前使用的图片配置:', characterImages);
+
+    // 绑定强制更新按钮
+    const refreshButton = document.getElementById('refresh-btn'); // 假设你有一个ID为 refresh-btn 的按钮
+    if (refreshButton) {
+        refreshButton.addEventListener('click', async () => {
+            alert('正在更新...');
+            const updatedImages = await imageUpdater.forceFetchData();
+            alert('更新完成！');
+            console.log('更新后的图片配置:', updatedImages);
+            // 在这里可以添加刷新界面的逻辑
+        });
+    }
+});
+*/
