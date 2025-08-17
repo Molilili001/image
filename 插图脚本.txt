@@ -1,6 +1,6 @@
 // --- 用于加载插图索引并定时检查更新的脚本 ---
 
-// 1. 配置
+// 1. 配置，此处url请自行更改
 const illustrationIndexUrl = 'https://raw.githubusercontent.com/Molilili001/image/refs/heads/main/%E6%8F%92%E5%9B%BE%E5%88%97%E8%A1%A8';
 const updateInterval = 60 * 60 * 1000; // 每小时检查一次 (毫秒)
 
@@ -51,5 +51,6 @@ checkAndUpdateIllustrations(true);
 
 // 设置定时器，每小时检查一次更新
 setInterval(() => checkAndUpdateIllustrations(false), updateInterval);
+
 
 console.log('插图索引自动更新脚本已启动，将每小时检查一次更新。');
