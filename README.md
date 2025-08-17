@@ -1,5 +1,7 @@
 # sillytavern适用的html前端以及远程更新插图提示词以及html中展示的角色立绘
 
+插图脚本使用方法详细图文教程：https://discord.com/channels/1134557553011998840/1406678777236557947
+
 ## 1远程更新立绘功能
 html内置本项目的character_images的raw链接用于远程更新立绘
 
