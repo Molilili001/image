@@ -1,0 +1,43 @@
+<%
+  // --- 插图列表生成器 (仅基于 illustration_index) ---
+  // 该脚本遍历角色列表，查找每个角色的插图索引，
+  // 并按照 “角色名: 分类: 文件列表” 的格式输出。
+
+  // 1. 定义需要查找插图的角色列表
+  const characters = ['洛千霜', '林语惊', '陈予欢'];
+  
+  // 2. 初始化变量
+  let finalOutput = ''; // 用于拼接最终输出的字符串
+  let isFirstCharacter = true; // 用于控制角色块之间的换行
+
+  // 3. 遍历所有指定的角色
+  for (const charName of characters) {
+    // 直接从 illustration_index 获取数据
+    const illustrations = getvar(`illustration_index.${charName}`);
+
+    // 检查该角色是否有插图信息
+    if (illustrations && Object.keys(illustrations).length > 0) {
+      
+      // 如果不是第一个输出的角色，就在前面加上两个换行符用于分隔
+      if (!isFirstCharacter) {
+        finalOutput += '\n\n';
+      }
+      
+      // 拼接角色名
+      finalOutput += `${charName}:`;
+      
+      // 遍历该角色的所有插图分类
+      for (const category in illustrations) {
+        const files = illustrations[category];
+        if (files && files.length > 0) {
+          // 拼接分类和文件名，前面加上换行和缩进
+          finalOutput += `\n  ${category}: ${files.join(', ')}`;
+        }
+      }
+      
+      // 处理完一个有插图的角色后，更新标记
+      isFirstCharacter = false;
+    }
+  }
+%>
+<%= finalOutput %>
